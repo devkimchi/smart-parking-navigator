@@ -1,0 +1,29 @@
+# EditorConfig: https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.{cs,fs,vb}]
+indent_size = 4
+
+[*.{csproj,fsproj,vbproj,props,targets}]
+indent_size = 2
+
+[*.sln]
+end_of_line = crlf
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.{bat,cmd,ps1}]
+end_of_line = crlf
+
