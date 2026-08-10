@@ -31,9 +31,6 @@ Web API.
 The project uses Singapore public data, including HDB car park information and
 real-time car park availability from [data.gov.sg](https://data.gov.sg/).
 
-Local source data, API samples, and environment files under `data/` and `.env`
-are intentionally excluded from version control.
-
 ## Getting Started
 
 ### Prerequisites

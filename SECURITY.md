@@ -4,7 +4,7 @@
 
 Do not open a public GitHub issue for a security vulnerability.
 
-Report vulnerabilities privately to **security@devkimchi.com** and include:
+Report vulnerabilities privately to **security (at) devkimchi (dot) com** and include:
 
 - A description of the vulnerability
 - Steps to reproduce it
