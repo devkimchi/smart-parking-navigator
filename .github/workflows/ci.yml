@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Detect solution or project
+        id: dotnet
+        shell: bash
+        run: |
+          target="$(find . -maxdepth 3 -type f \( -name '*.slnx' -o -name '*.sln' \) -print -quit)"
+          if [ -z "$target" ]; then
+            target="$(find . -maxdepth 3 -type f -name '*.csproj' -print -quit)"
+          fi
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+
+      - name: Skip until application projects are added
+        if: steps.dotnet.outputs.target == ''
+        run: echo "No .NET solution or project is tracked yet."
+
+      - name: Restore
+        if: steps.dotnet.outputs.target != ''
+        run: dotnet restore "${{ steps.dotnet.outputs.target }}"
+
+      - name: Build
+        if: steps.dotnet.outputs.target != ''
+        run: dotnet build "${{ steps.dotnet.outputs.target }}" --no-restore --configuration Release
+
+      - name: Test
+        if: steps.dotnet.outputs.target != ''
+        run: dotnet test "${{ steps.dotnet.outputs.target }}" --no-build --configuration Release --verbosity normal
+
