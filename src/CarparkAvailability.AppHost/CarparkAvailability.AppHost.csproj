@@ -1,0 +1,13 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.4.6">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UserSecretsId>db41ef3a-bfa8-427e-a1fc-3033e10afa07</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CarparkAvailability.ApiApp\CarparkAvailability.ApiApp.csproj" />
+    <ProjectReference Include="..\CarparkAvailability.WebApp\CarparkAvailability.WebApp.csproj" />
+  </ItemGroup>
+
+</Project>

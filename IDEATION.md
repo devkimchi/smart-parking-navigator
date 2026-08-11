@@ -1,130 +1,146 @@
-# Smart Parking Navigator 아이디어
+# Smart Parking Navigator Idea
 
-## 추천 콘셉트
+## Recommended Concept
 
-단순히 지도에 주차장 위치를 표시하는 앱이 아니라, 목적지 주변의 주차장을
-실시간 데이터와 이용 조건을 바탕으로 추천하는 **Smart Parking Navigator**를
-만든다.
+Build a **Smart Parking Navigator** that goes beyond simply displaying parking
+locations on a map by recommending car parks near a destination based on
+real-time data and usage conditions.
 
-사용자가 목적지를 검색하면 주변 주차장의 현재 상태를 비교하고 가장 적합한
-주차장을 추천한다.
+When a user searches for a destination, the app compares the current status of
+nearby car parks and recommends the most suitable option.
 
-## 핵심 사용자 가치
+## Core User Value
 
-- 목적지 주변에서 실제로 주차 가능한 곳을 빠르게 찾는다.
-- 빈자리 수뿐만 아니라 주차 조건과 차량 제약까지 함께 확인한다.
-- 만차인 주차장 대신 이용 가능한 대안을 바로 추천받는다.
-- 데이터 갱신 시각을 확인해 오래된 정보를 구분한다.
+- Quickly find car parks with actual availability near the destination.
+- Review not only the number of available lots, but also parking conditions and
+  vehicle restrictions.
+- Immediately receive available alternatives instead of fully occupied car
+  parks.
+- Check data update times to identify stale information.
 
-## MVP 기능
+## MVP Features
 
-### 지도와 검색
+### Map and Search
 
-- Google Maps 또는 호환 지도에 HDB 주차장 위치 표시
-- 주소 및 목적지 검색
-- 현재 위치 주변 주차장 탐색
-- 지도 영역 이동에 따른 검색 결과 갱신
+- Display HDB car park locations on Google Maps or a compatible map.
+- Search by address or destination.
+- Explore car parks near the user's current location.
+- Refresh search results as the visible map area changes.
 
-### 실시간 주차 정보
+### Real-Time Parking Information
 
-- 전체 주차면과 이용 가능한 주차면 표시
-- 주차장별 점유율 계산
-- 자동차, 대형 차량, 오토바이 등 주차면 유형 구분
-- 마지막 데이터 갱신 시각 및 오래된 데이터 경고
+- Display total and available parking lots.
+- Calculate the occupancy rate for each car park.
+- Distinguish lot types for cars, heavy vehicles, motorcycles, and other
+  vehicles.
+- Show the latest data update time and warn when data is stale.
 
-### 주차장 상세 정보
+### Car Park Details
 
-- 주소
-- 주차장 유형
-- 전자식 또는 쿠폰식 주차 시스템
-- 단기 주차 가능 시간
-- 무료 주차 조건
-- 야간 주차 가능 여부
-- 주차장 층수
-- 입구 높이 제한
-- 지하 주차장 여부
+- Address
+- Car park type
+- Electronic or coupon-based parking system
+- Short-term parking hours
+- Free parking conditions
+- Night parking availability
+- Number of car park decks
+- Entrance height restriction
+- Whether the car park is underground
 
-### 필터와 추천
+### Filters and Recommendations
 
-- 빈자리 있는 주차장만 표시
-- 무료 주차 및 야간 주차 필터
-- 차량 높이와 주차면 유형 필터
-- 지상, 지하, 다층 주차장 필터
-- 목적지까지 거리, 빈자리 수, 점유율을 조합한 추천 순위
-- 선택한 주차장이 만차일 때 주변 대안 추천
+- Show only car parks with available lots.
+- Filter by free parking and night parking.
+- Filter by vehicle height and parking lot type.
+- Filter by surface, underground, and multi-storey car parks.
+- Rank recommendations using distance to the destination, number of available
+  lots, and occupancy rate.
+- Recommend nearby alternatives when the selected car park is full.
 
-## 확장 아이디어
+## Expansion Ideas
 
-### 빈자리 알림
+### Availability Alerts
 
-즐겨찾기한 주차장의 빈자리가 사용자가 설정한 기준 이상이 되면 알림을 보낸다.
+Send a notification when the number of available lots at a favorite car park
+meets or exceeds a user-defined threshold.
 
-### 혼잡도 예측
+### Occupancy Forecasting
 
-API 데이터를 주기적으로 저장해 요일과 시간대별 점유율을 학습하고, 도착
-예정 시각의 주차 가능성을 예측한다.
+Periodically store API data to learn occupancy patterns by day of the week and
+time of day, then predict parking availability at the estimated arrival time.
 
-### 무료 주차 탐색
+### Free Parking Discovery
 
-현재 시각을 기준으로 무료 주차가 적용되는 주차장과 곧 무료 주차가 시작되는
-주차장을 구분해 보여준다.
+Based on the current time, distinguish between car parks where free parking is
+currently available and those where free parking will begin soon.
 
-### 차량 맞춤 검색
+### Vehicle-Specific Search
 
-차량 종류와 높이를 프로필에 저장하고 이용할 수 없는 주차장을 검색 결과에서
-자동으로 제외한다.
+Save the vehicle type and height in the user's profile, then automatically
+exclude incompatible car parks from search results.
 
-### 교통과 날씨 통합
+### Traffic and Weather Integration
 
-교통 카메라 및 날씨 API를 결합해 목적지로 이동하는 경로의 교통 상황과
-도착 후 주차 여건을 함께 보여준다.
+Combine traffic camera and weather APIs to show both traffic conditions along
+the route to the destination and expected parking conditions upon arrival.
 
-### 운영 현황 대시보드
+### Operations Dashboard
 
-지역별 점유율, 혼잡도 히트맵, 데이터 갱신 상태, 주차장 유형별 통계를
-시각화한다.
+Visualize occupancy rates by area, congestion heatmaps, data refresh status,
+and statistics by car park type.
 
-## 데이터 활용
+## Data Usage
 
 ### Carpark Availability API
 
-- `carpark_number`를 주차장 식별자로 사용
-- `carpark_info`에서 주차면 유형별 전체 면수와 빈자리 수 조회
-- `update_datetime`으로 데이터 신선도 판단
-- API는 권장 주기인 1분 간격으로 조회
+- Use `carpark_number` as the car park identifier.
+- Retrieve total and available lots by lot type from `carpark_info`.
+- Use `update_datetime` to determine data freshness.
+- Poll the API at the recommended interval of one minute.
 
 ### HDB Carpark Information
 
-- `car_park_no`를 기준으로 실시간 데이터와 결합
-- 주소와 주차장 운영 조건 제공
-- `x_coord`, `y_coord`를 지도 표시용 좌표로 변환
+- Join static information with real-time data using `car_park_no`.
+- Provide addresses and car park operating conditions.
+- Convert `x_coord` and `y_coord` into coordinates suitable for map display.
 
-현재 샘플 기준 실시간 주차장 2,016개 중 2,008개를 HDB 정보와 연결할 수
-있다.
+Based on the current sample, 2,008 of the 2,016 real-time car parks can be
+matched with HDB information.
 
-## 데이터 처리 시 고려사항
+## Data Processing Considerations
 
-- HDB의 `x_coord`, `y_coord`는 SVY21 좌표이므로 지도에서 사용하려면 WGS84
-  위도와 경도로 변환해야 한다.
-- 실제 API 응답은 `carpark_number`, `update_datetime`, `carpark_info`를
-  포함하므로 샘플 응답 구조를 기준으로 파서를 설계한다.
-- 숫자 값이 문자열로 제공되므로 수치형으로 안전하게 변환한다.
-- 실시간 데이터와 정적 정보가 연결되지 않는 주차장도 정상적으로 처리한다.
-- API 호출 실패 시 마지막으로 성공한 데이터와 해당 갱신 시각을 명확히
-  표시한다.
+- HDB's `x_coord` and `y_coord` values use the SVY21 coordinate system and must
+  be converted to WGS84 latitude and longitude for use on a map.
+- Treat the published OpenAPI specification as the primary API contract, and
+  validate representative live responses against it with contract tests.
+- Accept backward-compatible additions such as unknown optional fields, but
+  report missing required fields, incompatible types, and structural changes as
+  schema validation errors.
+- When the live response differs from the specification, capture a sanitized
+  example, document the affected fields, and confirm the behavior before
+  updating the parser, tests, and local schema together. Track the discrepancy
+  until the upstream specification is corrected.
+- Numeric values are provided as strings and must be safely converted to
+  numeric types.
+- Gracefully handle car parks whose real-time data cannot be matched with
+  static information.
+- If an API request fails, clearly display the last successfully retrieved data
+  and its update time.
 
-## 추천 우선순위
+## Recommended Priorities
 
-1. 지도, 목적지 검색, 실시간 빈자리 표시
-2. 주차장 상세 정보와 조건 필터
-3. 거리와 점유율 기반 추천 및 대안 주차장
-4. 즐겨찾기와 빈자리 알림
-5. 데이터 축적과 혼잡도 예측
-6. 교통 및 날씨 데이터 통합
+1. Map, destination search, and real-time availability display
+2. Car park details and condition-based filters
+3. Distance- and occupancy-based recommendations and alternative car parks
+4. Favorites and availability alerts
+5. Historical data collection and occupancy forecasting
+6. Traffic and weather data integration
 
-## 성공 기준
+## Success Criteria
 
-- 사용자가 목적지 주변의 이용 가능한 주차장을 몇 초 안에 찾을 수 있다.
-- 높이 제한이나 운영 시간에 맞지 않는 주차장이 추천되지 않는다.
-- API 데이터가 오래되었거나 사용할 수 없을 때 상태가 명확히 표시된다.
-- 만차인 주차장을 선택해도 가까운 대안을 바로 확인할 수 있다.
+- Users can find an available car park near their destination within seconds.
+- Car parks that do not meet height restrictions or operating-hour requirements
+  are not recommended.
+- The status is clearly displayed when API data is stale or unavailable.
+- Users can immediately view nearby alternatives even when they select a full
+  car park.
