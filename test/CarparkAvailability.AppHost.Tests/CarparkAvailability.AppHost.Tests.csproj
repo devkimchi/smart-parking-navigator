@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\CarparkAvailability.AppHost\CarparkAvailability.AppHost.csproj" />
+  </ItemGroup>
+
+</Project>

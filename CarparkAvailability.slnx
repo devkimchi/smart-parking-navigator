@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CarparkAvailability.ApiApp/CarparkAvailability.ApiApp.csproj" />
+    <Project Path="src/CarparkAvailability.AppHost/CarparkAvailability.AppHost.csproj" />
+    <Project Path="src/CarparkAvailability.ServiceDefaults/CarparkAvailability.ServiceDefaults.csproj" />
+    <Project Path="src/CarparkAvailability.WebApp/CarparkAvailability.WebApp.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/CarparkAvailability.ApiApp.Tests/CarparkAvailability.ApiApp.Tests.csproj" />
+    <Project Path="test/CarparkAvailability.AppHost.Tests/CarparkAvailability.AppHost.Tests.csproj" />
+    <Project Path="test/CarparkAvailability.WebApp.Tests/CarparkAvailability.WebApp.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,6 @@
+@CarparkAvailability.ApiApp_HostAddress = http://localhost:5199
+
+GET {{CarparkAvailability.ApiApp_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
