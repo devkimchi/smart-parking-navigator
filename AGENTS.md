@@ -175,6 +175,9 @@ otherwise focused work.
 
 - Follow Conventional Commits: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`,
   or `chore:`.
+- After completing and validating each coherent implementation step, commit it
+  before starting the next step. Do not leave completed steps uncommitted or
+  combine multiple completed steps into one later commit.
 - Make each commit one coherent, independently reviewable unit of work.
 - Do not mix features, refactoring, formatting, tests, or documentation unless
   they directly support the same change.
