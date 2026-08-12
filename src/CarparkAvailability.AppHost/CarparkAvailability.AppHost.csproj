@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Azure.AppContainers" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\CarparkAvailability.ApiApp\CarparkAvailability.ApiApp.csproj" />
     <ProjectReference Include="..\CarparkAvailability.WebApp\CarparkAvailability.WebApp.csproj" />
   </ItemGroup>

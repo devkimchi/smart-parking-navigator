@@ -487,3 +487,6 @@ data/*
 !data/carpark-availability.http
 !data/carpark-availability-sample.json
 !data/CarparkAvailability.json
+
+# Azure Developer CLI local environments
+.azure/

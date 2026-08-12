@@ -570,10 +570,11 @@ Configuration uses typed options validated at startup.
 | Google Maps browser key | WebApp/browser | Environment configuration with HTTP referrer restrictions |
 | Azure Monitor connection | Both | Managed Azure environment configuration |
 
-Secrets are never committed. If data.gov.sg requires a credential, it is stored
-in Azure Key Vault and accessed through ApiApp managed identity. The Google Maps
-browser key is expected to be visible to the browser and is protected with
-application and API restrictions, not treated as a confidential server secret.
+Secrets are never committed. If data.gov.sg requires a credential, Aspire
+publishes its secret parameter as an Azure Container Apps secret and injects it
+into ApiApp through a `secretRef`. The Google Maps browser key is expected to be
+visible to the browser and is protected with application and API restrictions,
+not treated as a confidential server secret.
 
 Development secrets use .NET user secrets or local environment configuration.
 
@@ -764,7 +765,7 @@ Aspire and `azd` provision:
 - Log Analytics workspace;
 - Application Insights/Azure Monitor connection;
 - managed identities and least-privilege role assignments;
-- Key Vault only if a confidential upstream secret is required.
+- native Container Apps secrets for confidential upstream credentials.
 
 The Aspire AppHost is the only maintained infrastructure model. No separate
 `infra/` directory or hand-maintained Bicep files are required. Resource names
