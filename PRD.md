@@ -3,12 +3,12 @@
 | Field | Value |
 | --- | --- |
 | Status | Approved |
-| Version | 1.0 |
-| Last updated | 2026-08-11 |
+| Version | 1.1 |
+| Last updated | 2026-08-13 |
 | Product owner | TBD |
 | Target market | Drivers using HDB car parks in Singapore |
 | Source | [IDEATION.md](IDEATION.md) |
-| Approval | Product requirements signed off on 2026-08-11 |
+| Approval | P0 requirements refined and approved on 2026-08-13 |
 
 ## 1. Executive Summary
 
@@ -20,8 +20,9 @@ alternatives when a selected car park is full.
 
 The MVP will combine destination search, a map and results list, real-time
 availability, car park details, compatibility filters, and ranked
-recommendations. It will explicitly communicate when data is stale or
-unavailable so users can make informed decisions.
+recommendations. It will show original source update times and explicitly
+communicate unavailable data or refresh failures so users can make informed
+decisions.
 
 ## 2. Problem and Opportunity
 
@@ -175,9 +176,9 @@ Priority definitions:
 
 | ID | Priority | Requirement | Acceptance criteria |
 | --- | --- | --- | --- |
-| FR-01 | P0 | Users can search by destination or address. | A valid search resolves to a map location and displays car parks within a 500-metre geodesic radius of the destination; an unresolved or ambiguous search presents a clear recovery message. |
-| FR-02 | P0 | Users can search around their current location. | With permission, the product centers results on the current location; without permission, destination search remains usable and the denial is explained without repeated prompts. |
-| FR-03 | P0 | The map and result list remain synchronized. | Moving the map offers or performs a search for the visible area; selecting a map marker highlights the corresponding list item and vice versa. |
+| FR-01 | P0 | Users can search by destination or address. | Search is restricted to Singapore. A valid search resolves to a map location and displays car parks within a 500-metre geodesic radius. When multiple named places or addresses match, up to five choices appear directly beneath the input with place names and addresses so the user can select one; unresolved searches present a clear recovery message. |
+| FR-02 | P0 | Users can search around their current location. | With permission and a location inside Singapore, the product centers results on the current location. A location outside Singapore does not run a search and displays a prominent dismissible modal explaining the supported area. Without permission, destination search remains usable and the denial is explained without repeated prompts. |
+| FR-03 | P0 | The map and result list remain synchronized. | Moving the map offers a search for the visible area and resolves the selected center to a nearby place name or address; selecting a map marker highlights the corresponding list item and vice versa. On mobile, the map is the default view and an explicit Map/List toggle exposes the accessible results list. |
 | FR-04 | P0 | Each result communicates its proximity to the destination. | Results show straight-line geodesic distance from the resolved destination in metres and are recalculated when the destination or search area changes. |
 
 ### 8.2 Availability and car park details
@@ -187,7 +188,7 @@ Priority definitions:
 | FR-05 | P0 | Users can see total and available lots by supported lot type. | Car, heavy-vehicle, motorcycle, and other returned lot types are labeled separately; numeric strings are displayed as validated numbers. |
 | FR-06 | P0 | Users can understand occupancy at a glance. | The product shows available lots and an occupancy indicator derived from valid total and available values; invalid or missing values are not presented as zero. |
 | FR-07 | P0 | Users can inspect car park operating details. | The detail view shows all available fields for address, car park type, parking system, night parking, decks, height restriction, and basement status. Short-term and free-parking conditions are shown only when their interpretation is documented by an approved official source. Missing or unverified fields are labeled as unavailable rather than inferred. |
-| FR-08 | P0 | Users can assess data freshness. | Every availability display includes the source update time and a fresh, stale, or unavailable state. Stale and unavailable states are conveyed with text or icons, not color alone. |
+| FR-08 | P0 | Users can assess data currency. | Every result includes its original source update time. Aggregate status shows the latest aggregate update and explicitly identifies unavailable data or a failed refresh. A manual refresh action is available when data is not fresh, retains last-known-good data on failure, and does not imply that retrieval changed the upstream source time. |
 
 ### 8.3 Filters and compatibility
 
@@ -204,7 +205,7 @@ Priority definitions:
 | --- | --- | --- | --- |
 | FR-13 | P0 | The product ranks viable car parks for the selected destination. | Recommended results satisfy active hard constraints and are ordered using distance, available lots, and occupancy. The UI identifies the recommended option and summarizes the factors supporting it. |
 | FR-14 | P0 | Full car parks have actionable alternatives. | Selecting a car park with zero availability displays compatible options with valid availability within 500 metres of the destination; if none exist, the product states that no verified alternative was found and allows filters or area to be changed. |
-| FR-15 | P0 | Uncertain data does not appear certain. | Results with stale or unavailable availability are labeled and are not ranked above otherwise comparable results with fresh, verified availability. |
+| FR-15 | P0 | Uncertain data does not appear certain. | Results without valid live availability are excluded. Stale results retain their original source update times and are not ranked above otherwise comparable results with fresh, verified availability. |
 
 ### 8.5 Favorites and alerts
 
@@ -280,9 +281,9 @@ status.
 
 ### Partial and failed data
 
-- A car park with unmatched static or real-time data remains processable but is
-  labeled as incomplete and is excluded from recommendations when required
-  compatibility or availability cannot be verified.
+- A car park with unmatched static data is quarantined from searchable results.
+  A static car park without valid real-time availability is excluded from the
+  result set because current availability cannot be verified.
 - After an API failure, the last successful data may remain visible only with
   its original update time and current freshness state.
 
@@ -296,7 +297,7 @@ Each result should prioritize:
 2. Available lots and lot type
 3. Distance to destination
 4. Compatibility or restriction status
-5. Data update time and freshness
+5. Source update time and aggregate data status
 6. Relevant operating conditions
 
 ### Required states
@@ -309,11 +310,14 @@ The experience must define and test:
 - No results after filters
 - Full car park
 - Incompatible car park
-- Stale availability
-- Unavailable availability
+- Stale aggregate availability
+- Unavailable aggregate availability
 - Partial static or real-time record
 - Map or upstream API failure
 - Location permission denied
+- Current location outside Singapore
+- Multiple destination matches
+- Manual refresh in progress or failed
 
 ### Accessibility
 
@@ -354,7 +358,7 @@ unless an exception is explicitly approved.
 - Recommendation selected
 - Full car park viewed
 - Alternative displayed and selected
-- Fresh, stale, or unavailable data displayed
+- Aggregate data status and source update time displayed
 - No-results state displayed
 
 ### Pre-launch validation
@@ -390,8 +394,9 @@ unless an exception is explicitly approved.
   API and its OpenAPI specification
 - [HDB Car Park Information](https://data.gov.sg/datasets/d_23f946fa557947f93a8043bbef41dd09/view)
   dataset
-- Google Maps for maps and geocoding, plus browser geolocation for optional
-  current-location search
+- Google Maps JavaScript API, Places API (New), and geocoding for maps, named
+  destination discovery, map-area naming, and address fallback, plus browser
+  geolocation for optional current-location search
 - SVY21-to-WGS84 conversion with verified reference points
 - Notification capability and persistence for P1 alerts
 - Product analytics and operational monitoring
@@ -433,7 +438,8 @@ unless an exception is explicitly approved.
 - All P0 acceptance criteria pass.
 - No known issue can recommend a car park that violates an active hard
   constraint.
-- Freshness and unavailable states are present across every availability view.
+- Source update timestamps are present on every result, and aggregate
+  unavailable or refresh-failure states are explicit.
 - Contract and coordinate-conversion tests pass against approved fixtures.
 - Monitoring exists for upstream failures, stale data, validation errors, and
   unmatched identifiers.

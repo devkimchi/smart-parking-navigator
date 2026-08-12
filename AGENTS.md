@@ -12,16 +12,17 @@ and nearby alternatives.
 
 These instructions apply to the entire repository.
 
-Smart Parking Navigator is currently an initial .NET application scaffold. The
-approved product behavior is documented in `PRD.md`, and the approved technical
-design is documented in `TRD.md`. Treat those documents as requirements, but
-verify the current source tree before assuming a designed feature exists.
+The P0 functional vertical slice is implemented. It includes HDB catalogue
+loading, data.gov.sg availability polling and manual refresh, geospatial search,
+filters, ranking, alternatives, the Blazor map/list experience, Google Places
+destination discovery, generated OpenAPI clients, Aspire composition, and Azure
+Container Apps deployment preparation.
 
-Several documented capabilities are not implemented yet, including complete
-Aspire application composition, parking search, live availability ingestion,
-Google Maps integration, generated OpenAPI clients, and Azure deployment.
-Planned paths such as `contracts/` may not exist until their corresponding work
-is implemented.
+Post-P0 performance, browser-compatibility, accessibility, custom observability,
+and production-deployment gates are not complete. The approved product behavior
+is documented in `PRD.md`, and the approved technical design is documented in
+`TRD.md`. Treat those documents as requirements, but verify the current source
+tree before assuming a planned capability exists.
 
 ## Repository Structure
 
@@ -35,16 +36,22 @@ is implemented.
 ├── test/
 │   ├── CarparkAvailability.ApiApp.Tests/
 │   ├── CarparkAvailability.AppHost.Tests/
-│   └── CarparkAvailability.WebApp.Tests/       # xUnit v3 integration tests
+│   └── CarparkAvailability.WebApp.Tests/       # xUnit v3 component/state tests
 ├── data/                                       # Versioned source/sample data
+├── contracts/                                  # Internal OpenAPI contract
+├── .azure/deployment-plan.md                   # Tracked deployment status
+├── aspire.config.json                          # Aspire CLI AppHost selection
+├── azure.yaml                                  # Azure Developer CLI entry point
 ├── Directory.Build.props                       # Solution-wide .NET settings
 ├── Directory.Packages.props                    # Central package versions
 └── CarparkAvailability.slnx                    # Restore/build/test entry point
 ```
 
-The AppHost references the API and web projects but does not register them as
-Aspire resources yet. ServiceDefaults contains shared service discovery,
-resilience, health check, logging, and OpenTelemetry configuration.
+The AppHost registers ApiApp and WebApp, injects both external API keys from
+AppHost configuration, keeps ApiApp internal, exposes WebApp, configures health
+probes, and publishes both projects as single-replica Azure Container Apps.
+ServiceDefaults contains shared service discovery, resilience, health check,
+logging, and OpenTelemetry configuration.
 
 Do not manually edit vendored Bootstrap files under
 `src/CarparkAvailability.WebApp/wwwroot/lib/`.
@@ -56,8 +63,8 @@ Do not manually edit vendored Bootstrap files under
 - Use .NET Aspire for local application composition and shared observability.
 - Keep browser-facing UI in the Blazor web project and backend data and search
   behavior in the API project.
-- Preserve the OpenAPI-first boundary between the web and API projects when
-  that integration is implemented.
+- Preserve the implemented OpenAPI-first boundary between the web and API
+  projects.
 - Put cross-service telemetry, health, resilience, and service-discovery
   defaults in `CarparkAvailability.ServiceDefaults` rather than duplicating
   them across application projects.
@@ -91,8 +98,9 @@ dotnet test CarparkAvailability.slnx --no-build --configuration Release
 dotnet run --project src\CarparkAvailability.AppHost
 ```
 
-The AppHost currently starts only the Aspire host because its source does not
-yet register the web and API projects as resources.
+The AppHost starts and connects the web and API projects. Configure
+`GoogleMaps:ApiKey` and `DataGovSg:ApiKey` in its user-secrets store before
+running external-service journeys.
 
 Use the narrowest relevant test project while iterating, then run the solution
 build and tests before completing a code change.
@@ -138,6 +146,8 @@ otherwise focused work.
 ## Dependencies
 
 - Declare package versions centrally in `Directory.Packages.props`.
+- Use the repository's approved major-version floating ranges for centrally
+  managed packages unless a task explicitly requires a narrower version.
 - Add versionless `PackageReference` entries to individual project files.
 - Reuse packages already present in the repository when they meet the need.
 - Add a dependency only when the platform or existing packages cannot solve the
@@ -167,6 +177,9 @@ otherwise focused work.
 - Supply the browser-visible Google Maps key through
   `GoogleMaps__ApiKey`. Protect it with Google Maps website and API
   restrictions; do not describe it as a confidential server secret.
+- Keep `GoogleMaps:ApiKey` and `DataGovSg:ApiKey` in the AppHost user-secrets
+  store for local development; AppHost maps them to service environment
+  configuration.
 - Use environment variables or the established .NET user-secrets mechanism for
   local configuration.
 - Validate external input and avoid logging sensitive configuration values.

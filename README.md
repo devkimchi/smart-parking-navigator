@@ -7,10 +7,11 @@ vehicle type and parking conditions, rank compatible options, and show nearby
 alternatives when a car park is full.
 
 > [!NOTE]
-> The repository currently contains the initial .NET solution and application
-> scaffolding. The approved product and technical designs are documented in
-> [PRD.md](PRD.md) and [TRD.md](TRD.md); parking, map, and Azure deployment
-> features are not implemented yet.
+> The P0 parking-search experience is implemented, including live availability,
+> destination and current-location search, Google Maps, filtering, ranking,
+> details, alternatives, manual refresh, Aspire composition, and generated
+> OpenAPI clients. Post-P0 performance, browser-compatibility, accessibility,
+> observability, and production-deployment gates remain before an MVP release.
 
 ## Architecture
 
@@ -43,7 +44,7 @@ The solution uses:
 - **ASP.NET Core Web API** for data ingestion, search, and recommendations.
 - **Microsoft Fluent UI Blazor** for the user interface.
 - **OpenAPI-first** frontend/backend communication.
-- **xUnit v3** and **Playwright for .NET** for automated testing.
+- **xUnit v3**, **bUnit**, and Aspire hosting tests for automated testing.
 - **Azure Container Apps** as the approved deployment target.
 
 ## Prerequisites
@@ -54,8 +55,8 @@ The solution uses:
 - A Chromium-family browser
 - A [Google Cloud project](https://console.cloud.google.com/) with billing
   enabled for a standard Google Maps Platform key
-- A container runtime supported by Aspire when local container resources are
-  introduced
+- A data.gov.sg API key
+- A container runtime supported by Aspire for packaging or Azure deployment
 
 ### Google Maps API key
 
@@ -65,8 +66,10 @@ Google Maps Platform requires an API key for authentication and billing.
    [Google Cloud console](https://console.cloud.google.com/).
 2. Enable billing for the project.
 3. Enable the
-   [Maps JavaScript API](https://console.cloud.google.com/google/maps-apis/api-list)
-   and the Places API required for destination search.
+   [Maps JavaScript API](https://console.cloud.google.com/google/maps-apis/api-list),
+   **Places API (New)**, and Geocoding API. Places text search supplies named
+   destination choices, Places nearby search names a selected map area, and
+   geocoding provides the address fallback.
 4. Create an API key from
    [Google Maps Platform credentials](https://console.cloud.google.com/google/maps-apis/credentials).
 5. Add **Website** application restrictions for the local and deployed origins,
@@ -79,12 +82,12 @@ treated as a confidential server secret. Protect it with website and API
 restrictions, monitor its usage, and never commit it to the repository. See
 [Google's API security best practices](https://developers.google.com/maps/api-security-best-practices).
 
-The configuration contract will use `GoogleMaps:ApiKey`. Until the integration
-is implemented, the key is not consumed by the application. Once available,
-set it for the current PowerShell session without writing it to source:
+The AppHost reads `GoogleMaps:ApiKey` and supplies it to WebApp as
+`GoogleMaps__ApiKey`. Store it with the AppHost's development secrets:
 
 ```powershell
-$env:GoogleMaps__ApiKey = "<your-restricted-api-key>"
+dotnet user-secrets set "GoogleMaps:ApiKey" "<your-restricted-api-key>" `
+  --project src\CarparkAvailability.AppHost
 ```
 
 ### Azure deployment
@@ -94,21 +97,29 @@ $env:GoogleMaps__ApiKey = "<your-restricted-api-key>"
 - Permission to create resource groups, Azure Container Apps, Azure Container
   Registry, Log Analytics, Application Insights, and managed identities
 
-GitHub Actions deployment uses OpenID Connect workload identity rather than a
-long-lived Azure client secret.
+The planned GitHub Actions deployment will use OpenID Connect workload identity
+rather than a long-lived Azure client secret.
 
 ## Getting Started
 
 ### Local development
 
 1. Clone the repository and enter its directory.
-2. Configure `GoogleMaps__ApiKey` when working on map integration.
+2. Configure the external API keys in the AppHost user-secrets store:
+
+   ```powershell
+   dotnet user-secrets set "GoogleMaps:ApiKey" "<your-restricted-api-key>" `
+     --project src\CarparkAvailability.AppHost
+   dotnet user-secrets set "DataGovSg:ApiKey" "<your-data-gov-sg-api-key>" `
+     --project src\CarparkAvailability.AppHost
+   ```
+
 3. Restore, build, and test the solution:
 
    ```powershell
    dotnet restore CarparkAvailability.slnx
-   dotnet build CarparkAvailability.slnx --no-restore
-   dotnet test CarparkAvailability.slnx --no-build
+   dotnet build CarparkAvailability.slnx --no-restore --configuration Release
+   dotnet test CarparkAvailability.slnx --no-build --configuration Release
    ```
 
 4. Run the Aspire AppHost:
@@ -119,17 +130,20 @@ long-lived Azure client secret.
 
 5. Open the Aspire dashboard URL printed in the terminal.
 
-The AppHost does not register the WebApp and ApiApp yet. After the P0
-application composition is implemented, running the AppHost will start and
-connect the complete local application.
+The AppHost starts ApiApp and WebApp, injects their external-service
+configuration, connects WebApp to ApiApp through Aspire service discovery, and
+opens both services in the Aspire dashboard. WebApp is the browser-facing
+resource.
 
 ### Azure deployment
 
-Azure deployment is not configured in the current scaffold. The approved
-deployment model keeps Azure Container Apps resources in the Aspire AppHost and
-uses `azd`; no separately maintained Bicep files are required.
+`azure.yaml`, `aspire.config.json`, the AppHost Container Apps topology, and the
+tracked deployment plan are prepared. The plan in
+`.azure/deployment-plan.md` records the current validation status and blockers.
+No separately maintained Bicep files are required.
 
-After the AppHost deployment model and `azure.yaml` are implemented:
+After all validation blockers are resolved and deployment is explicitly
+approved:
 
 ```powershell
 azd auth login
@@ -142,10 +156,9 @@ azd up
 `azd up` provisions the AppHost-defined Azure resources and deploys the
 application. The deployment output provides the public WebApp URL.
 
-The GitHub Actions workflow will run restore, build, tests, OpenAPI validation,
-browser tests, container packaging, security scanning, and deployment. Pull
-requests validate only; merges to `main` deploy to development, while production
-uses a protected GitHub environment and manual approval.
+The current GitHub Actions workflow restores the solution, generates both NSwag
+clients, builds in Release, and runs all test projects. Browser testing,
+container scanning, and automated deployment remain post-P0 pipeline work.
 
 See
 [Deploy an Aspire project to Azure Container Apps](https://learn.microsoft.com/dotnet/aspire/deployment/azure/aca-deployment)
@@ -155,6 +168,8 @@ for the platform workflow.
 
 ```text
 /
+|-- .azure/
+|   `-- deployment-plan.md                    # Tracked deployment status
 |-- contracts/                              # Internal OpenAPI source of truth
 |-- data/                                   # Versioned HDB static data
 |-- src/
@@ -166,12 +181,12 @@ for the platform workflow.
 |   |-- CarparkAvailability.ApiApp.Tests/
 |   |-- CarparkAvailability.AppHost.Tests/
 |   `-- CarparkAvailability.WebApp.Tests/
+|-- aspire.config.json
+|-- azure.yaml
 |-- IDEATION.md
 |-- PRD.md
 `-- TRD.md
 ```
-
-Some planned paths, including `contracts/`, are created during implementation.
 
 ## Further Reading
 

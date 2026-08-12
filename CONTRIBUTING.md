@@ -13,21 +13,31 @@ Prerequisites:
 
 - .NET 10 SDK
 - Git
-- A container runtime supported by .NET Aspire, when required
+- A Chromium-family browser
+- Google Maps and data.gov.sg API keys for local end-to-end use
+- A container runtime supported by .NET Aspire for packaging or deployment
 
 Clone the repository and restore dependencies:
 
 ```powershell
 git clone https://github.com/devkimchi/smart-parking-navigator.git
 cd smart-parking-navigator
-dotnet restore
+dotnet restore CarparkAvailability.slnx
 ```
 
-After the solution is scaffolded, run the application through its Aspire
-AppHost:
+Store development credentials in the AppHost user-secrets store:
 
 ```powershell
-dotnet run --project src/SmartParkingNavigator.AppHost
+dotnet user-secrets set "GoogleMaps:ApiKey" "<your-restricted-api-key>" `
+  --project src\CarparkAvailability.AppHost
+dotnet user-secrets set "DataGovSg:ApiKey" "<your-data-gov-sg-api-key>" `
+  --project src\CarparkAvailability.AppHost
+```
+
+Run the complete application through its Aspire AppHost:
+
+```powershell
+dotnet run --project src\CarparkAvailability.AppHost
 ```
 
 ## Making Changes
@@ -37,12 +47,32 @@ dotnet run --project src/SmartParkingNavigator.AppHost
 3. Run the local checks:
 
    ```powershell
-   dotnet build --configuration Release
-   dotnet test --configuration Release
+   dotnet restore CarparkAvailability.slnx
+   dotnet build CarparkAvailability.slnx --no-restore --configuration Release
+   dotnet test CarparkAvailability.slnx --no-build --configuration Release
    ```
 
 4. Update documentation when behavior or setup changes.
-5. Open a pull request and link the related issue.
+5. Commit each completed and validated coherent step before starting the next.
+6. Open a pull request and link the related issue.
+
+## OpenAPI Client Generation
+
+ApiApp generates its data.gov.sg transport client from
+`data\CarparkAvailability.json`. WebApp generates its internal API client from
+`contracts\carpark-availability-api.openapi.yaml`. Both generated clients live
+under `obj` and must not be edited or committed.
+
+To validate generation explicitly:
+
+```powershell
+dotnet msbuild src\CarparkAvailability.ApiApp\CarparkAvailability.ApiApp.csproj `
+  -target:GenerateDataGovSgApiClient -property:Configuration=Release `
+  -property:TargetFramework=net10.0
+dotnet msbuild src\CarparkAvailability.WebApp\CarparkAvailability.WebApp.csproj `
+  -target:GenerateCarparkApiClient -property:Configuration=Release `
+  -property:TargetFramework=net10.0
+```
 
 ## Commit Convention
 
@@ -59,4 +89,3 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 
 Use the structured forms in `.github/ISSUE_TEMPLATE/` and include enough
 context to reproduce or evaluate the request.
-
