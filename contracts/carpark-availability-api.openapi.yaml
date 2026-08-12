@@ -1,0 +1,432 @@
+openapi: 3.0.3
+info:
+  title: Smart Parking Navigator API
+  version: 1.0.0
+  description: Internal P0 contract for HDB car park search, details, and data health.
+servers:
+  - url: /
+paths:
+  /api/carparks:
+    get:
+      operationId: searchCarParks
+      summary: Returns compatible car parks within the fixed search radius.
+      parameters:
+        - $ref: '#/components/parameters/Latitude'
+        - $ref: '#/components/parameters/Longitude'
+        - $ref: '#/components/parameters/VehicleType'
+        - name: availableOnly
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: nightParking
+          in: query
+          schema:
+            type: boolean
+        - name: carParkType
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/CarParkType'
+      responses:
+        '200':
+          description: Search completed, including when no car parks match.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarParkSearchResponse'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '500':
+          $ref: '#/components/responses/Problem'
+        '503':
+          $ref: '#/components/responses/Problem'
+  /api/carparks/{carParkNumber}:
+    get:
+      operationId: getCarPark
+      summary: Returns full static and live details and verified alternatives when full.
+      parameters:
+        - name: carParkNumber
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 16
+        - name: vehicleType
+          in: query
+          schema:
+            $ref: '#/components/schemas/VehicleType'
+          description: Vehicle lot type used to determine compatibility and alternatives. Defaults to car.
+        - name: latitude
+          in: query
+          schema:
+            type: number
+            format: double
+            minimum: -90
+            maximum: 90
+          description: Destination latitude used to find alternatives when the selected car park is full.
+        - name: longitude
+          in: query
+          schema:
+            type: number
+            format: double
+            minimum: -180
+            maximum: 180
+          description: Destination longitude used to find alternatives when the selected car park is full.
+        - name: nightParking
+          in: query
+          schema:
+            type: boolean
+        - name: carParkType
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/CarParkType'
+      responses:
+        '200':
+          description: Car park details, with alternatives constrained to the supplied destination and filters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarParkDetail'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '500':
+          $ref: '#/components/responses/Problem'
+  /api/data-status:
+    get:
+      operationId: getDataStatus
+      summary: Returns static and live source validation, freshness, and matching status.
+      responses:
+        '200':
+          description: Current ingestion status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataStatus'
+        '500':
+          $ref: '#/components/responses/Problem'
+  /api/data-status/refresh:
+    post:
+      operationId: refreshDataStatus
+      summary: Refreshes live availability when the upstream poll is due.
+      responses:
+        '200':
+          description: Status after the refresh request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataStatus'
+        '503':
+          $ref: '#/components/responses/Problem'
+components:
+  parameters:
+    Latitude:
+      name: latitude
+      in: query
+      required: true
+      schema:
+        type: number
+        format: double
+        minimum: -90
+        maximum: 90
+    Longitude:
+      name: longitude
+      in: query
+      required: true
+      schema:
+        type: number
+        format: double
+        minimum: -180
+        maximum: 180
+    VehicleType:
+      name: vehicleType
+      in: query
+      required: true
+      schema:
+        $ref: '#/components/schemas/VehicleType'
+  responses:
+    Problem:
+      description: RFC 9457 Problem Details.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    ValidationProblem:
+      description: RFC 9457 validation Problem Details.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ValidationProblemDetails'
+  schemas:
+    VehicleType:
+      type: string
+      enum: [car, heavyVehicle, motorcycle]
+    LotType:
+      type: string
+      enum: [car, heavyVehicle, motorcycle, other]
+    CarParkType:
+      type: string
+      enum: [surface, underground, multiStorey]
+    Freshness:
+      type: string
+      enum: [fresh, stale, unavailable]
+    ExclusionReason:
+      type: string
+      enum:
+        - incompatibleVehicleType
+        - unavailable
+        - full
+        - nightParkingNotAvailable
+        - carParkTypeMismatch
+        - incompleteMetadata
+    Coordinate:
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+    LotAvailability:
+      type: object
+      required: [lotType, totalLots, availableLots]
+      properties:
+        lotType:
+          $ref: '#/components/schemas/LotType'
+        totalLots:
+          type: integer
+          minimum: 0
+        availableLots:
+          type: integer
+          minimum: 0
+    Availability:
+      type: object
+      required: [lots, freshness]
+      properties:
+        lots:
+          type: array
+          items:
+            $ref: '#/components/schemas/LotAvailability'
+        sourceUpdateTime:
+          type: string
+          format: date-time
+          nullable: true
+        retrievalTime:
+          type: string
+          format: date-time
+          nullable: true
+        freshness:
+          $ref: '#/components/schemas/Freshness'
+        occupancyRate:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          nullable: true
+    RankFactors:
+      type: object
+      required: [score, distanceScore, availabilityScore, occupancyScore]
+      properties:
+        score:
+          type: number
+          format: double
+        distanceScore:
+          type: number
+          format: double
+        availabilityScore:
+          type: number
+          format: double
+        occupancyScore:
+          type: number
+          format: double
+    CarParkSummary:
+      type: object
+      required:
+        - carParkNumber
+        - address
+        - coordinate
+        - carParkType
+        - parkingSystem
+        - nightParking
+        - basement
+        - incompleteMetadata
+      properties:
+        carParkNumber:
+          type: string
+        address:
+          type: string
+        coordinate:
+          $ref: '#/components/schemas/Coordinate'
+        carParkType:
+          $ref: '#/components/schemas/CarParkType'
+        sourceCarParkType:
+          type: string
+        parkingSystem:
+          type: string
+        nightParking:
+          type: boolean
+        decks:
+          type: integer
+          minimum: 0
+          nullable: true
+        gantryHeight:
+          type: number
+          format: double
+          minimum: 0
+          nullable: true
+        basement:
+          type: boolean
+        shortTermParking:
+          type: string
+          nullable: true
+        freeParking:
+          type: string
+          nullable: true
+        incompleteMetadata:
+          type: boolean
+    CarParkSearchResult:
+      allOf:
+        - $ref: '#/components/schemas/CarParkSummary'
+        - type: object
+          required:
+            - distanceMetres
+            - availability
+            - compatible
+            - recommended
+            - exclusionReasons
+          properties:
+            distanceMetres:
+              type: number
+              format: double
+              minimum: 0
+            availability:
+              $ref: '#/components/schemas/Availability'
+            compatible:
+              type: boolean
+            recommended:
+              type: boolean
+            exclusionReasons:
+              type: array
+              items:
+                $ref: '#/components/schemas/ExclusionReason'
+            rankFactors:
+              allOf:
+                - $ref: '#/components/schemas/RankFactors'
+              nullable: true
+    CarParkSearchResponse:
+      type: object
+      required: [results, radiusMetres]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CarParkSearchResult'
+        radiusMetres:
+          type: number
+          format: double
+    CarParkDetail:
+      allOf:
+        - $ref: '#/components/schemas/CarParkSummary'
+        - type: object
+          required: [availability, compatible, exclusionReasons, alternatives]
+          properties:
+            availability:
+              $ref: '#/components/schemas/Availability'
+            compatible:
+              type: boolean
+            exclusionReasons:
+              type: array
+              items:
+                $ref: '#/components/schemas/ExclusionReason'
+            alternatives:
+              type: array
+              items:
+                $ref: '#/components/schemas/CarParkSearchResult'
+    DataStatus:
+      type: object
+      required:
+        - freshness
+        - staticRecordCount
+        - quarantinedStaticRowCount
+        - liveRecordCount
+        - matchedRecordCount
+        - validationErrorCount
+      properties:
+        lastAttemptTime:
+          type: string
+          format: date-time
+          nullable: true
+        lastSuccessTime:
+          type: string
+          format: date-time
+          nullable: true
+        sourceUpdateTime:
+          type: string
+          format: date-time
+          nullable: true
+        retrievalTime:
+          type: string
+          format: date-time
+          nullable: true
+        freshness:
+          $ref: '#/components/schemas/Freshness'
+        staticRecordCount:
+          type: integer
+          minimum: 0
+        quarantinedStaticRowCount:
+          type: integer
+          minimum: 0
+        liveRecordCount:
+          type: integer
+          minimum: 0
+        matchedRecordCount:
+          type: integer
+          minimum: 0
+        validationErrorCount:
+          type: integer
+          minimum: 0
+        lastError:
+          type: string
+          nullable: true
+    ProblemDetails:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        traceId:
+          type: string
+      additionalProperties: true
+    ValidationProblemDetails:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          required: [errors]
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
