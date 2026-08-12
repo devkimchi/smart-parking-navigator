@@ -489,4 +489,6 @@ data/*
 !data/CarparkAvailability.json
 
 # Azure Developer CLI local environments
-.azure/
+.azure/*
+!.azure/deployment-plan.md*
+!.azure/deployment-plan.md
