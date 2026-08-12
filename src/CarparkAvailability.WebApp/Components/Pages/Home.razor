@@ -1,7 +1,632 @@
-﻿@page "/"
+@page "/"
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject ParkingSearchState SearchState
+@inject IMapInterop MapInterop
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Find HDB parking | Smart Parking Navigator</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="parking-page">
+    <section class="search-hero" aria-labelledby="page-heading">
+        <div>
+            <p class="eyebrow">Park with confidence</p>
+            <h1 id="page-heading">Find suitable parking near your destination</h1>
+            <p class="hero-copy">Compare nearby HDB car parks using live lot availability, distance, and vehicle compatibility.</p>
+        </div>
 
-Welcome to your new app.
+        <form class="search-panel" @onsubmit="SearchDestinationAsync" @onsubmit:preventDefault>
+            <div class="destination-control">
+                <FluentTextField @bind-Value="SearchState.SearchText"
+                                 Label="Destination or address"
+                                 Placeholder="e.g. Bugis Junction"
+                                 Autofocus="true"
+                                 aria-describedby="destination-help" />
+                @if (_destinationCandidates.Count > 0)
+                {
+                    <div class="destination-options" aria-label="Matching destinations">
+                        <strong>Choose a location</strong>
+                        @foreach (GeocodeCandidate candidate in _destinationCandidates)
+                        {
+                            <button type="button" @onclick="@(() => SelectDestinationAsync(candidate))">
+                                <span aria-hidden="true">⌖</span>
+                                <span>
+                                    <strong>@candidate.Name</strong>
+                                    @if (!string.IsNullOrWhiteSpace(candidate.Address))
+                                    {
+                                        <small>@candidate.Address</small>
+                                    }
+                                </span>
+                            </button>
+                        }
+                    </div>
+                }
+                <span id="destination-help" class="field-help">We use this only to find nearby parking.</span>
+            </div>
+            <FluentButton Type="ButtonType.Submit"
+                          Appearance="Appearance.Accent"
+                          Disabled="@SearchState.IsLoading">
+                Search parking
+            </FluentButton>
+            <span class="or-label" aria-hidden="true">or</span>
+            <FluentButton Type="ButtonType.Button"
+                          Appearance="Appearance.Outline"
+                          Disabled="@(SearchState.IsLoading || SearchState.LocationState == LocationPermissionState.Requesting || SearchState.LocationState == LocationPermissionState.Denied)"
+                          @onclick="UseCurrentLocationAsync">
+                Use current location
+            </FluentButton>
+        </form>
+
+        @if (!_outsideSingaporeLocation &&
+             SearchState.LocationState is LocationPermissionState.Denied or LocationPermissionState.Error)
+        {
+            <p class="inline-message" role="alert">@SearchState.LocationMessage Destination search is still available.</p>
+        }
+    </section>
+
+    <LocationOutsideSingaporeDialog Visible="@_showOutsideSingaporeDialog"
+                                    OnDismiss="@DismissOutsideSingaporeDialog" />
+
+    <section class="filter-bar" aria-label="Parking filters">
+        <div class="filter-group">
+            <label for="vehicle-type">Vehicle type</label>
+            <select id="vehicle-type" value="@VehicleValue(SearchState.VehicleType)" @onchange="VehicleChangedAsync">
+                <option value="car">Car</option>
+                <option value="heavyVehicle">Heavy vehicle</option>
+                <option value="motorcycle">Motorcycle</option>
+            </select>
+        </div>
+        <FluentCheckbox Value="@SearchState.AvailableOnly" ValueChanged="AvailableOnlyChangedAsync">
+            Available now
+        </FluentCheckbox>
+        <FluentCheckbox Value="@SearchState.NightParking" ValueChanged="NightParkingChangedAsync">
+            Night parking
+        </FluentCheckbox>
+        <fieldset class="type-filters">
+            <legend>Car park type</legend>
+            <FluentCheckbox Value="@SearchState.CarParkTypes.Contains(CarParkType.Surface)"
+                            ValueChanged="@(value => CarParkTypeChangedAsync(CarParkType.Surface, value))">
+                Surface
+            </FluentCheckbox>
+            <FluentCheckbox Value="@SearchState.CarParkTypes.Contains(CarParkType.Underground)"
+                            ValueChanged="@(value => CarParkTypeChangedAsync(CarParkType.Underground, value))">
+                Underground
+            </FluentCheckbox>
+            <FluentCheckbox Value="@SearchState.CarParkTypes.Contains(CarParkType.MultiStorey)"
+                            ValueChanged="@(value => CarParkTypeChangedAsync(CarParkType.MultiStorey, value))">
+                Multi-storey
+            </FluentCheckbox>
+        </fieldset>
+    </section>
+
+    @if (SearchState.HasActiveFilters)
+    {
+        <section class="active-filters" aria-label="Active filters">
+            <strong>Active filters</strong>
+            @if (SearchState.AvailableOnly)
+            {
+                <span class="filter-chip">Available now</span>
+            }
+            @if (SearchState.NightParking)
+            {
+                <span class="filter-chip">Night parking</span>
+            }
+            @foreach (CarParkType carParkType in SearchState.CarParkTypes.OrderBy(static value => value))
+            {
+                <span class="filter-chip">@CarParkTypeLabel(carParkType)</span>
+            }
+            <FluentButton Appearance="Appearance.Stealth" @onclick="ClearFiltersAsync">Clear filters</FluentButton>
+        </section>
+    }
+
+    <DataStatusSummary Status="@SearchState.DataStatus"
+                       Unavailable="@SearchState.DataStatusUnavailable"
+                       IsRefreshing="@SearchState.IsRefreshingData"
+                       RefreshMessage="@SearchState.DataRefreshMessage"
+                       OnRefresh="@RefreshDataAsync" />
+
+    <div class="mobile-view-toggle" aria-label="Choose results view">
+        <FluentButton Appearance="@(_mobileView == "list" ? Appearance.Accent : Appearance.Outline)"
+                      aria-pressed="@(_mobileView == "list")"
+                      @onclick="@(() => _mobileView = "list")">
+            List
+        </FluentButton>
+        <FluentButton Appearance="@(_mobileView == "map" ? Appearance.Accent : Appearance.Outline)"
+                      aria-pressed="@(_mobileView == "map")"
+                      @onclick="@(() => _mobileView = "map")">
+            Map
+        </FluentButton>
+    </div>
+
+    <section class="workspace @($"mobile-{_mobileView}")" aria-label="Parking search results">
+        <div class="results-pane" aria-label="Nearby car parks">
+            <div class="results-heading">
+                <div>
+                    <p class="eyebrow">Within 500 metres</p>
+                    <h2>Nearby car parks</h2>
+                </div>
+                @if (SearchState.Outcome == SearchOutcome.Results)
+                {
+                    <span>@SearchState.Results.Count result@(SearchState.Results.Count == 1 ? string.Empty : "s")</span>
+                }
+            </div>
+
+            <div class="status-region" role="status" aria-live="polite">
+                @if (SearchState.IsLoading)
+                {
+                    <div class="state-card loading-state">
+                        <FluentProgressRing aria-label="Searching" />
+                        <div>
+                            <strong>Finding suitable parking…</strong>
+                            <p>Checking compatibility and the latest availability.</p>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    @OutcomeMessage()
+                }
+            </div>
+
+            <div class="result-list" role="list" aria-label="Car parks; accessible alternative to the map">
+                @if (SearchState.Results.Count > 0)
+                {
+                    @foreach (CarParkSearchResult result in SearchState.Results)
+                    {
+                        <ResultCard Result="@result"
+                                    VehicleType="@SearchState.VehicleType"
+                                    Selected="@(SearchState.SelectedCarParkNumber == result.CarParkNumber)"
+                                    OnSelect="SelectCarParkAsync" />
+                    }
+                }
+            </div>
+        </div>
+
+        <div class="map-pane" aria-label="Car park map">
+            <div id="parking-map" class="map-canvas" @ref="_mapElement" aria-label="Map of nearby car parks"></div>
+            @if (SearchState.MapState == MapInitializationStatus.Failed)
+            {
+                <div class="map-fallback" role="status">
+                    <strong>Map unavailable</strong>
+                    <p>@SearchState.MapMessage Use the accessible results list to choose parking.</p>
+                </div>
+            }
+            @if (SearchState.PendingViewport is not null)
+            {
+                <FluentButton class="search-area-button"
+                              Appearance="Appearance.Accent"
+                              @onclick="SearchVisibleAreaAsync">
+                    Search this map area
+                </FluentButton>
+            }
+        </div>
+    </section>
+</div>
+
+<CarParkDetailDialog Detail="@SearchState.SelectedDetail"
+                     ErrorMessage="@SearchState.DetailErrorMessage"
+                     VehicleType="@SearchState.VehicleType"
+                     IsLoading="@SearchState.IsLoadingDetail"
+                     OnClose="@CloseDetailAsync"
+                     OnSelectAlternative="@SelectCarParkAsync" />
+
+@code {
+    private ElementReference _mapElement;
+    private readonly CancellationTokenSource _statusRefreshCancellation = new();
+    private IReadOnlyList<GeocodeCandidate> _destinationCandidates = [];
+    private bool _outsideSingaporeLocation;
+    private bool _showOutsideSingaporeDialog;
+    private bool _mapInitializationAttempted;
+    private string _mobileView = "map";
+    private Task? _statusRefreshTask;
+
+    protected override async Task OnInitializedAsync()
+    {
+        SearchState.Changed += StateChanged;
+        await SearchState.LoadDataStatusAsync();
+        _statusRefreshTask = RefreshDataStatusPeriodicallyAsync(_statusRefreshCancellation.Token);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _mapInitializationAttempted)
+        {
+            return;
+        }
+
+        _mapInitializationAttempted = true;
+        try
+        {
+            bool initialized = await MapInterop.InitializeAsync(_mapElement, this);
+            SearchState.SetMapReady(
+                initialized,
+                initialized ? null : "Add a valid Google Maps browser key to enable the map and address search.");
+        }
+        catch (JSException)
+        {
+            SearchState.SetMapReady(false, "The map provider could not be loaded.");
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnMarkerSelected(string carParkNumber)
+    {
+        await SelectCarParkAsync(carParkNumber);
+    }
+
+    [JSInvokable]
+    public Task OnMapViewportChanged(double centerLatitude, double centerLongitude)
+    {
+        SearchState.OfferViewportSearch(new MapViewport(centerLatitude, centerLongitude));
+        return Task.CompletedTask;
+    }
+
+    private async Task SearchDestinationAsync()
+    {
+        _destinationCandidates = [];
+        string searchText = SearchState.SearchText.Trim();
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            SearchState.SetDestinationFailure(
+                SearchOutcome.NoDestinationMatch,
+                "Enter a Singapore destination or address to begin.");
+            return;
+        }
+
+        if (SearchState.MapState != MapInitializationStatus.Ready)
+        {
+            SearchState.SetDestinationFailure(
+                SearchOutcome.MapFailure,
+                "Address search needs the map provider, which is currently unavailable.");
+            return;
+        }
+
+        try
+        {
+            GeocodeResult result = await MapInterop.GeocodeAsync(searchText);
+            if (result.Status == GeocodeResultStatus.Resolved && result.Coordinate is MapCoordinate coordinate)
+            {
+                await RunSearchAsync(coordinate, result.ResolvedLabel ?? searchText);
+                return;
+            }
+
+            if (result.Status == GeocodeResultStatus.Ambiguous &&
+                result.Candidates is { Count: > 0 } candidates)
+            {
+                _destinationCandidates = candidates;
+                return;
+            }
+
+            SearchState.SetDestinationFailure(
+                result.Status == GeocodeResultStatus.Ambiguous
+                    ? SearchOutcome.AmbiguousDestination
+                    : result.Status == GeocodeResultStatus.NoMatch
+                        ? SearchOutcome.NoDestinationMatch
+                        : SearchOutcome.MapFailure,
+                result.Message ?? "We could not resolve that destination. Add a street or postal code and try again.");
+        }
+        catch (JSException)
+        {
+            SearchState.SetDestinationFailure(
+                SearchOutcome.MapFailure,
+                "Destination search is temporarily unavailable. Please try again.");
+        }
+    }
+
+    private async Task SelectDestinationAsync(GeocodeCandidate candidate)
+    {
+        _destinationCandidates = [];
+        SearchState.SearchText = candidate.Name;
+        await RunSearchAsync(candidate.Coordinate, candidate.Address ?? candidate.Name);
+    }
+
+    private async Task UseCurrentLocationAsync()
+    {
+        if (SearchState.LocationState == LocationPermissionState.Denied)
+        {
+            return;
+        }
+
+        if (!SearchState.BeginLocationRequest())
+        {
+            return;
+        }
+        LocationResult result;
+        try
+        {
+            result = await MapInterop.RequestCurrentLocationAsync();
+        }
+        catch (JSException)
+        {
+            result = new LocationResult(
+                LocationResultStatus.Failed,
+                null,
+                "Your browser could not provide a location.");
+        }
+
+        if (result.Status == LocationResultStatus.Granted &&
+            result.Coordinate is MapCoordinate location &&
+            !location.IsWithinSingapore)
+        {
+            _outsideSingaporeLocation = true;
+            _showOutsideSingaporeDialog = true;
+            result = new LocationResult(
+                LocationResultStatus.Failed,
+                null,
+                "Your current location is outside Singapore.");
+        }
+        else
+        {
+            _outsideSingaporeLocation = false;
+        }
+
+        SearchState.SetLocationResult(result);
+        if (result.Status == LocationResultStatus.Granted && result.Coordinate is MapCoordinate coordinate)
+        {
+            SearchState.SearchText = "Current location";
+            await RunSearchAsync(coordinate, "Current location");
+        }
+    }
+
+    private void DismissOutsideSingaporeDialog()
+    {
+        _showOutsideSingaporeDialog = false;
+    }
+
+    private async Task RunSearchAsync(MapCoordinate coordinate, string label)
+    {
+        await SearchState.SearchAsync(coordinate, label);
+        await SearchState.LoadDataStatusAsync();
+        await UpdateMapAsync();
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        if (await SearchState.RefreshDataAndCurrentSearchAsync())
+        {
+            await UpdateMapAsync();
+        }
+    }
+
+    private async Task RefreshDataStatusPeriodicallyAsync(CancellationToken cancellationToken)
+    {
+        using PeriodicTimer timer = new(TimeSpan.FromMinutes(1));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await SearchState.LoadDataStatusAsync(cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+    }
+
+    private async Task UpdateMapAsync()
+    {
+        if (SearchState.MapState != MapInitializationStatus.Ready)
+        {
+            return;
+        }
+
+        IReadOnlyCollection<MapMarker> markers = SearchState.Results
+            .Select(result =>
+            {
+                LotAvailability? selectedLot = SelectedLot(result.Availability, SearchState.VehicleType);
+                return new MapMarker(
+                    result.CarParkNumber,
+                    result.Address,
+                    result.Coordinate.Latitude,
+                    result.Coordinate.Longitude,
+                    selectedLot?.AvailableLots,
+                    result.Recommended,
+                    result.CarParkNumber == SearchState.SelectedCarParkNumber);
+            })
+            .ToArray();
+
+        try
+        {
+            await MapInterop.SetMarkersAsync(markers, SearchState.Origin, SearchState.SearchText);
+        }
+        catch (JSException)
+        {
+            SearchState.SetMapReady(false, "The map stopped responding.");
+        }
+    }
+
+    private async Task SelectCarParkAsync(string carParkNumber)
+    {
+        await SearchState.SelectAsync(carParkNumber);
+        if (!string.Equals(
+                SearchState.SelectedCarParkNumber,
+                carParkNumber,
+                StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (SearchState.MapState == MapInitializationStatus.Ready)
+        {
+            try
+            {
+                await MapInterop.SelectMarkerAsync(carParkNumber);
+            }
+            catch (JSException)
+            {
+                SearchState.SetMapReady(false, "The map stopped responding.");
+            }
+        }
+    }
+
+    private async Task SearchVisibleAreaAsync()
+    {
+        if (SearchState.PendingViewport is not MapViewport viewport)
+        {
+            return;
+        }
+
+        MapCoordinate coordinate = new(viewport.CenterLatitude, viewport.CenterLongitude);
+        MapLocationLabel? location;
+        try
+        {
+            location = await MapInterop.ResolveLocationAsync(coordinate);
+        }
+        catch (JSException)
+        {
+            SearchState.SetDestinationFailure(
+                SearchOutcome.MapFailure,
+                "The selected map location could not be identified. Please try again.");
+            return;
+        }
+
+        if (location is null)
+        {
+            SearchState.SetDestinationFailure(
+                SearchOutcome.NoDestinationMatch,
+                "No named place or address was found at the selected map location.");
+            return;
+        }
+
+        SearchState.SearchText = location.Name;
+        await RunSearchAsync(coordinate, location.Address ?? location.Name);
+    }
+
+    private async Task VehicleChangedAsync(ChangeEventArgs args)
+    {
+        SearchState.SetVehicleType(args.Value?.ToString() switch
+        {
+            "heavyVehicle" => VehicleType.HeavyVehicle,
+            "motorcycle" => VehicleType.Motorcycle,
+            _ => VehicleType.Car,
+        });
+        await RefreshSearchAsync();
+    }
+
+    private async Task AvailableOnlyChangedAsync(bool value)
+    {
+        SearchState.SetAvailableOnly(value);
+        await RefreshSearchAsync();
+    }
+
+    private async Task NightParkingChangedAsync(bool value)
+    {
+        SearchState.SetNightParking(value);
+        await RefreshSearchAsync();
+    }
+
+    private async Task CarParkTypeChangedAsync(CarParkType carParkType, bool value)
+    {
+        SearchState.SetCarParkType(carParkType, value);
+        await RefreshSearchAsync();
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        SearchState.ClearFilters();
+        await RefreshSearchAsync();
+    }
+
+    private async Task RefreshSearchAsync()
+    {
+        if (SearchState.Origin is MapCoordinate origin)
+        {
+            await RunSearchAsync(origin, SearchState.DestinationLabel ?? "Selected area");
+        }
+    }
+
+    private async Task CloseDetailAsync()
+    {
+        SearchState.CloseDetail();
+        if (SearchState.MapState == MapInitializationStatus.Ready)
+        {
+            try
+            {
+                await MapInterop.SelectMarkerAsync(null);
+            }
+            catch (JSException)
+            {
+                SearchState.SetMapReady(false, "The map stopped responding.");
+            }
+        }
+    }
+
+    private RenderFragment OutcomeMessage() => builder =>
+    {
+        string? title = SearchState.Outcome switch
+        {
+            SearchOutcome.Idle => "Start with a destination",
+            SearchOutcome.NoDestinationMatch => "Destination not found",
+            SearchOutcome.AmbiguousDestination => "Choose a more specific destination",
+            SearchOutcome.NoNearbyCarParks => "No HDB car parks found nearby",
+            SearchOutcome.NoFilteredResults => "No car parks match these filters",
+            SearchOutcome.ApiFailure => "Parking data is temporarily unavailable",
+            SearchOutcome.MapFailure => "Destination search is unavailable",
+            _ => null,
+        };
+
+        if (title is null)
+        {
+            return;
+        }
+
+        string message = SearchState.ErrorMessage ?? SearchState.Outcome switch
+        {
+            SearchOutcome.Idle => "Search an address, landmark, or use your current location.",
+            SearchOutcome.NoNearbyCarParks => "Try another destination or search the visible map area.",
+            SearchOutcome.NoFilteredResults => "Clear one or more filters to see nearby options.",
+            _ => "Check the destination and try again.",
+        };
+
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "state-card");
+        builder.OpenElement(2, "strong");
+        builder.AddContent(3, title);
+        builder.CloseElement();
+        builder.OpenElement(4, "p");
+        builder.AddContent(5, message);
+        builder.CloseElement();
+        builder.CloseElement();
+    };
+
+    private void StateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private static string VehicleValue(VehicleType vehicleType) => vehicleType switch
+    {
+        VehicleType.HeavyVehicle => "heavyVehicle",
+        VehicleType.Motorcycle => "motorcycle",
+        _ => "car",
+    };
+
+    private static string CarParkTypeLabel(CarParkType carParkType) => carParkType switch
+    {
+        CarParkType.MultiStorey => "Multi-storey",
+        CarParkType.Underground => "Underground",
+        _ => "Surface",
+    };
+
+    private static LotAvailability? SelectedLot(Availability availability, VehicleType vehicleType)
+    {
+        LotType lotType = vehicleType switch
+        {
+            VehicleType.HeavyVehicle => LotType.HeavyVehicle,
+            VehicleType.Motorcycle => LotType.Motorcycle,
+            _ => LotType.Car,
+        };
+        return availability.Lots.FirstOrDefault(lot => lot.LotType == lotType);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _statusRefreshCancellation.Cancel();
+        if (_statusRefreshTask is not null)
+        {
+            await _statusRefreshTask;
+        }
+
+        _statusRefreshCancellation.Dispose();
+        SearchState.Changed -= StateChanged;
+    }
+}

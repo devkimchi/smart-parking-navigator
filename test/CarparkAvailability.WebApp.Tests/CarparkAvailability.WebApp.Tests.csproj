@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="bunit" />
     <ProjectReference Include="..\..\src\CarparkAvailability.WebApp\CarparkAvailability.WebApp.csproj" />
   </ItemGroup>
 

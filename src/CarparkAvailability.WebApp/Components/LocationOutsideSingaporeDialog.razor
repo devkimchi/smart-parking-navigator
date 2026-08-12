@@ -1,0 +1,24 @@
+<FluentDialog Hidden="@(!Visible)"
+              Modal="true"
+              TrapFocus="true"
+              PreventScroll="true"
+              aria-label="Current location outside Singapore"
+              @ondialogdismiss="DismissAsync">
+    <FluentDialogHeader Visible="false" />
+    <div class="location-warning-dialog">
+        <p class="eyebrow">Current location</p>
+        <h2>You’re outside Singapore</h2>
+        <p role="alert">Smart Parking Navigator currently searches only for HDB car parks in Singapore.</p>
+        <FluentButton Appearance="Appearance.Accent" Autofocus="true" @onclick="DismissAsync">Got it</FluentButton>
+    </div>
+</FluentDialog>
+
+@code {
+    [Parameter]
+    public bool Visible { get; set; }
+
+    [Parameter]
+    public EventCallback OnDismiss { get; set; }
+
+    private Task DismissAsync() => OnDismiss.InvokeAsync();
+}

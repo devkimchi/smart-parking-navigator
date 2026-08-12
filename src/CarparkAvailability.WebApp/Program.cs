@@ -1,18 +1,29 @@
 using CarparkAvailability.WebApp.Components;
+using CarparkAvailability.WebApp.Generated;
+using CarparkAvailability.WebApp.Services;
+using CarparkAvailability.WebApp.State;
+using Microsoft.FluentUI.AspNetCore.Components;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+builder.AddServiceDefaults();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddHttpClient();
+builder.Services.AddFluentUIComponents();
+builder.Services.Configure<GoogleMapsOptions>(builder.Configuration.GetSection(GoogleMapsOptions.SectionName));
+builder.Services.AddScoped<IMapInterop, GoogleMapsInterop>();
+builder.Services.AddScoped<ParkingSearchState>();
+builder.Services.AddHttpClient<ICarparkAvailabilityApiClient, CarparkAvailabilityApiClient>(client =>
+{
+    client.BaseAddress = new Uri("https+http://apiapp");
+});
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
@@ -23,5 +34,8 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+app.MapDefaultEndpoints();
 
 app.Run();
+
+public partial class Program;
