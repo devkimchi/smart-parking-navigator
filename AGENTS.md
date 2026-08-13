@@ -53,9 +53,6 @@ probes, and publishes both projects as single-replica Azure Container Apps.
 ServiceDefaults contains shared service discovery, resilience, health check,
 logging, and OpenTelemetry configuration.
 
-Do not manually edit vendored Bootstrap files under
-`src/CarparkAvailability.WebApp/wwwroot/lib/`.
-
 ## Technology and Architecture Constraints
 
 - Target .NET 10 as pinned by `global.json`.
