@@ -1,0 +1,135 @@
+<article role="listitem">
+    <button type="button"
+            class="result-card @(Selected ? "selected" : string.Empty)"
+            aria-label="@($"View details for {Result.Address}")"
+            aria-current="@(Selected ? "true" : null)"
+            @onclick="@(() => OnSelect.InvokeAsync(Result.CarParkNumber))">
+        <span class="card-topline">
+            @if (Result.Recommended)
+            {
+                <span class="recommendation-badge">Recommended</span>
+            }
+            <span class="distance">@Math.Round(Result.DistanceMetres) m away</span>
+        </span>
+        <strong class="result-address">@Result.Address</strong>
+        <span class="result-number">@Result.CarParkNumber · @CarParkTypeLabel(Result.CarParkType)</span>
+
+        <span class="availability-row">
+            @if (SelectedLot is not null)
+            {
+                <span class="lot-count">
+                    <b>@SelectedLot.AvailableLots</b>
+                    <span>@LotTypeLabel(SelectedLot.LotType) lots available of @SelectedLot.TotalLots</span>
+                </span>
+                @if (Result.Availability.OccupancyRate is double occupancy)
+                {
+                    <span class="occupancy">@Math.Round(occupancy * 100)% occupied</span>
+                }
+            }
+            else
+            {
+                <span class="lot-count unknown"><b>?</b><span>Selected lot availability unknown</span></span>
+            }
+        </span>
+
+        <span class="card-status">
+            <span>@UpdateLabel(Result.Availability.SourceUpdateTime)</span>
+        </span>
+
+        @if (!Result.Compatible || Result.ExclusionReasons.Count > 0 || Result.IncompleteMetadata)
+        {
+            <span class="restriction">
+                <span aria-hidden="true">⚠</span>
+                @RestrictionLabel()
+            </span>
+        }
+        else
+        {
+            <span class="conditions">
+                @CarParkTypeLabel(Result.CarParkType) · @(Result.NightParking ? "Night parking" : "No night parking")
+            </span>
+        }
+
+        @if (Result.Recommended && Result.RankFactors is not null)
+        {
+            <span class="recommendation-reason">
+                Balanced for distance, available lots, and occupancy
+                <span class="factor-values">
+                    distance @Factor(Result.RankFactors.DistanceScore) · availability @Factor(Result.RankFactors.AvailabilityScore) · occupancy @Factor(Result.RankFactors.OccupancyScore)
+                </span>
+            </span>
+        }
+        <span class="view-details">View details <span aria-hidden="true">→</span></span>
+    </button>
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public CarParkSearchResult Result { get; set; } = default!;
+
+    [Parameter]
+    public VehicleType VehicleType { get; set; }
+
+    [Parameter]
+    public bool Selected { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<string> OnSelect { get; set; }
+
+    private LotAvailability? SelectedLot => Result.Availability.Lots.FirstOrDefault(
+        lot => lot.LotType == VehicleLotType);
+
+    private LotType VehicleLotType => VehicleType switch
+    {
+        VehicleType.HeavyVehicle => LotType.HeavyVehicle,
+        VehicleType.Motorcycle => LotType.Motorcycle,
+        _ => LotType.Car,
+    };
+
+    private string RestrictionLabel()
+    {
+        if (Result.IncompleteMetadata)
+        {
+            return "Some car park information could not be verified";
+        }
+
+        if (!Result.Compatible || Result.ExclusionReasons.Contains(ExclusionReason.IncompatibleVehicleType))
+        {
+            return $"Compatibility with {VehicleLabel(VehicleType)} could not be verified";
+        }
+
+        if (Result.ExclusionReasons.Contains(ExclusionReason.Full))
+        {
+            return "No verified lots are currently available";
+        }
+
+        return "An active parking condition is not met";
+    }
+
+    private static string UpdateLabel(DateTimeOffset? updateTime) =>
+        updateTime is null ? "No source update time" : $"Updated {SingaporeTime.Format(updateTime.Value)}";
+
+    private static string Factor(double factor) => $"{Math.Round(factor * 100)}%";
+
+    private static string LotTypeLabel(LotType lotType) => lotType switch
+    {
+        LotType.HeavyVehicle => "heavy vehicle",
+        LotType.Motorcycle => "motorcycle",
+        LotType.Other => "other",
+        _ => "car",
+    };
+
+    private static string VehicleLabel(VehicleType vehicleType) => vehicleType switch
+    {
+        VehicleType.HeavyVehicle => "heavy vehicles",
+        VehicleType.Motorcycle => "motorcycles",
+        _ => "cars",
+    };
+
+    private static string CarParkTypeLabel(CarParkType carParkType) => carParkType switch
+    {
+        CarParkType.MultiStorey => "Multi-storey",
+        CarParkType.Underground => "Underground",
+        _ => "Surface",
+    };
+}

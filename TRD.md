@@ -3,12 +3,12 @@
 | Field | Value |
 | --- | --- |
 | Status | Approved |
-| Version | 1.0 |
-| Last updated | 2026-08-11 |
+| Version | 1.1 |
+| Last updated | 2026-08-13 |
 | Technical owner | TBD |
-| Product requirements | [PRD.md](PRD.md), version 1.0 |
+| Product requirements | [PRD.md](PRD.md), version 1.1 |
 | Target platform | .NET 10, .NET Aspire, Azure Container Apps |
-| Approval | Technical requirements signed off on 2026-08-11 |
+| Approval | P0 implementation decisions updated on 2026-08-13 |
 
 ## 1. Purpose
 
@@ -72,7 +72,7 @@ completed.
 | CSV parsing | `CsvHelper` | Standards-compliant streaming parser with explicit typed field mapping |
 | Static data | Existing `data/HDBCarparkInformation.csv` | Approved P0 HDB source without a database |
 | Live data | data.gov.sg Car Park Availability API | Approved real-time availability source |
-| Map and geocoding | Google Maps JavaScript API | Approved MVP map provider |
+| Map and destination discovery | Google Maps JavaScript API, Places API (New), and Geocoding API | Map rendering, named-place search, map-area naming, and address fallback |
 | Unit and integration tests | xUnit | Common .NET test framework |
 | End-to-end tests | Microsoft Playwright for .NET with xUnit | Browser-level verification of P0 journeys |
 | Cloud hosting | Azure Container Apps | Container hosting compatible with Aspire and `azd` |
@@ -80,9 +80,9 @@ completed.
 | Observability | OpenTelemetry and Azure Monitor/Application Insights | Aspire-compatible distributed telemetry |
 | Infrastructure model | Aspire AppHost deployment model with `azd` | Keep application topology and Azure Container Apps configuration in C# without separately maintained Bicep files |
 
-Package versions must be centrally pinned with
-`Directory.Packages.props`. Build settings and analyzers must be shared through
-`Directory.Build.props`.
+Package versions are centrally managed with approved major-version floating
+ranges in `Directory.Packages.props`. Build settings and analyzers are shared
+through `Directory.Build.props`.
 
 ## 4. Repository and Solution Structure
 
@@ -219,11 +219,8 @@ CarparkAvailability.ApiApp/
 CarparkAvailability.WebApp/
 |-- Components/
 |   |-- Layout/
-|   |-- Map/
-|   |-- Search/
+|   |-- Pages/
 |   `-- Results/
-|-- Generated/
-|-- Pages/
 |-- Services/
 |-- State/
 |-- wwwroot/
@@ -263,8 +260,13 @@ Contract workflow:
 6. Reject the change if generated output or tests are stale.
 
 Generated code is placed under the WebApp intermediate output directory during
-build and is not manually edited. The generation command and NSwag version are
-pinned for deterministic output.
+build and is not manually edited. The generation command is committed and the
+NSwag version is controlled through central package management.
+
+ApiApp separately generates its upstream transport client from
+`data/CarparkAvailability.json`. Partial DTO extensions adapt documented
+differences in representative v1 responses without replacing the generated
+transport boundary.
 
 ### 7.2 API conventions
 
@@ -288,6 +290,7 @@ pinned for deterministic output.
 | `GET /api/carparks` | Return filtered and ranked car parks within 500 metres of an origin |
 | `GET /api/carparks/{carParkNumber}` | Return one car park with current availability and details |
 | `GET /api/data-status` | Return source update, freshness, matching, and validation status |
+| `POST /api/data-status/refresh` | Request a serialized availability refresh subject to the polling cooldown |
 
 `GET /api/carparks` query parameters:
 
@@ -312,7 +315,7 @@ MVP.
 | `404` | Requested car park does not exist |
 | `429` | Defensive application throttling if introduced |
 | `500` | Unexpected internal failure with no sensitive details |
-| `503` | Service not ready because required static data could not be loaded |
+| `503` | Required startup data is unavailable or a requested upstream refresh failed |
 
 Upstream availability failure does not make the API unavailable when a
 last-known-good snapshot exists. Responses carry their original source
@@ -393,7 +396,8 @@ semantics.
 ### 10.1 Refresh lifecycle
 
 ApiApp owns all upstream polling. Browsers and WebApp do not call data.gov.sg
-directly.
+directly. The generated client calls the official
+`https://api.data.gov.sg/v1/transport/carpark-availability` endpoint.
 
 1. A hosted background service starts after the static catalog is ready.
 2. It performs an immediate fetch, then uses `PeriodicTimer` with a configurable
@@ -404,6 +408,11 @@ directly.
 6. A failed fetch or invalid response records telemetry and retains the
    last-known-good snapshot.
 7. Cancellation stops polling cleanly during container shutdown.
+
+The same singleton refresh service handles scheduled and user-requested
+refreshes. Manual requests share the overlap guard and a one-minute cooldown,
+return the current status after success, and return `503` while preserving
+last-known-good data when the upstream refresh fails.
 
 Recommended outbound policy:
 
@@ -457,7 +466,7 @@ The API calculates straight-line geodesic distance with the Haversine formula.
 ### 12.1 Processing order
 
 1. Select static car parks within 500 metres.
-2. Join current lot availability.
+2. Join current lot availability and exclude records without valid live data.
 3. Apply vehicle-type compatibility.
 4. Apply requested availability, night-parking, and car-park-type filters.
 5. Classify incomplete, fresh, stale, and unavailable results.
@@ -472,7 +481,7 @@ A car park is not recommended when:
 - it has no lot type compatible with the selected vehicle type;
 - a requested hard filter is not satisfied;
 - required coordinates are invalid;
-- availability is invalid or unavailable when `availableOnly=true`; or
+- availability is invalid or unavailable; or
 - it is full when alternatives with verified availability are requested.
 
 ### 12.3 Ranking
@@ -512,6 +521,10 @@ A weight change requires product review because it changes visible behavior.
 - WebApp calls ApiApp server-to-server through the generated NSwag client and
   Aspire service discovery.
 - The browser calls Google Maps only through the dedicated JavaScript module.
+- Named destinations use Places API (New) text search restricted to Singapore
+  and return up to five selectable matches. Geocoding is the address fallback.
+- Map-area searches use Places nearby search to name the center and reverse
+  geocoding only when no nearby named place is available.
 - No hand-written frontend HTTP DTO or API client is permitted.
 
 ### 13.2 Routes and state
@@ -535,6 +548,8 @@ scoped to the Blazor circuit and is not persisted after the session.
   without horizontal scrolling.
 - The map and result list share the available vertical space and provide an
   explicit control to switch emphasis on small screens.
+- The map is the default small-screen view; the List control exposes the
+  accessible result alternative.
 - `Microsoft.FluentUI.AspNetCore.Components` supplies standard controls,
   typography, dialogs, progress, and status presentation.
 
@@ -551,7 +566,10 @@ branch:
 - stale or unavailable data;
 - partial record;
 - Google Maps or upstream failure;
-- location permission denied; and
+- location permission denied;
+- current location outside Singapore in a focus-managed modal;
+- multiple selectable destination matches;
+- manual refresh in progress or failed; and
 - Blazor circuit reconnecting or disconnected.
 
 ## 14. Configuration and Secrets
@@ -562,6 +580,7 @@ Configuration uses typed options validated at startup.
 | --- | --- | --- |
 | Availability API base URL | ApiApp | Configuration |
 | Availability poll interval | ApiApp | 60 seconds |
+| Manual refresh cooldown | ApiApp | 60 seconds, shared with scheduled refresh |
 | Freshness threshold | ApiApp | 120 seconds |
 | Search radius | ApiApp | 500 metres, fixed for MVP |
 | Ranking weights and cap | ApiApp | Section 12 defaults |
@@ -570,10 +589,11 @@ Configuration uses typed options validated at startup.
 | Google Maps browser key | WebApp/browser | Environment configuration with HTTP referrer restrictions |
 | Azure Monitor connection | Both | Managed Azure environment configuration |
 
-Secrets are never committed. If data.gov.sg requires a credential, it is stored
-in Azure Key Vault and accessed through ApiApp managed identity. The Google Maps
-browser key is expected to be visible to the browser and is protected with
-application and API restrictions, not treated as a confidential server secret.
+Secrets are never committed. If data.gov.sg requires a credential, Aspire
+publishes its secret parameter as an Azure Container Apps secret and injects it
+into ApiApp through a `secretRef`. The Google Maps browser key is expected to be
+visible to the browser and is protected with application and API restrictions,
+not treated as a confidential server secret.
 
 Development secrets use .NET user secrets or local environment configuration.
 
@@ -605,8 +625,9 @@ Service Defaults expose:
 - `/alive` for process liveness;
 - `/health` for readiness.
 
-ApiApp readiness requires successful static CSV loading and initialized core
-services. Live availability may report unavailable without failing readiness so
+Both endpoints currently report process health through Service Defaults.
+Static-catalog initialization fails startup explicitly when required data cannot
+load. Live availability may report unavailable without failing process health so
 the UI can communicate the correct state.
 
 ### 16.2 Telemetry
@@ -635,9 +656,9 @@ Alerts:
 - sustained API or WebApp 5xx responses;
 - either Container App has no healthy replica.
 
-Telemetry is exported to Azure Monitor/Application Insights. Sampling and
-retention use cost-conscious platform defaults initially and are reviewed after
-MVP traffic is measured.
+Service Defaults exports OpenTelemetry through OTLP when an exporter endpoint is
+configured. Azure Monitor/Application Insights export, the custom metrics above,
+alerts, sampling, and retention policy remain Milestone 4 work.
 
 ## 17. Testing Strategy
 
@@ -682,8 +703,10 @@ Aspire distributed application tests verify:
 
 ### 17.3 WebApp.Tests
 
-Component tests verify Fluent UI rendering and state transitions. Playwright
-with xUnit verifies:
+Component tests currently verify Fluent UI rendering, state transitions,
+destination choices, current-location boundaries, map-area naming, manual
+refresh, and generated-client compatibility. The pre-MVP Playwright suite will
+verify:
 
 - destination search and 500-metre results;
 - current-location permission granted and denied;
@@ -696,10 +719,14 @@ with xUnit verifies:
 - 360px, 450px, and representative desktop viewports;
 - keyboard and accessible-name behavior before MVP release.
 
-Playwright runs against the AppHost with stubbed external integrations. Traces,
-screenshots, and videos are retained only for failed CI tests.
+The planned Playwright suite will run against the AppHost with stubbed external
+integrations. Traces, screenshots, and videos will be retained only for failed
+CI tests.
 
 ### 17.4 Test categories and gates
+
+The following are target gates before MVP deployment; the current P0 workflow
+implements contract generation, unit and integration tests, and AppHost tests.
 
 | Category | Pull request | Main deployment |
 | --- | --- | --- |
@@ -717,7 +744,11 @@ screenshots, and videos are retained only for failed CI tests.
 
 ### 18.1 GitHub Actions workflow
 
-`.github/workflows/ci.yml` evolves into dependency-ordered jobs:
+The current P0 workflow restores `CarparkAvailability.slnx`, explicitly
+generates both NSwag clients, builds in Release, and runs all xUnit projects on
+pushes and pull requests targeting `main`.
+
+Before MVP release, it evolves into dependency-ordered jobs:
 
 1. **contract**
    - validate the OpenAPI YAML;
@@ -746,8 +777,8 @@ screenshots, and videos are retained only for failed CI tests.
    - execute health and smoke checks;
    - publish WebApp URL and deployment summary.
 
-Pull requests run validation but never deploy. Merges to `main` deploy to the
-development environment. Production deployment uses `workflow_dispatch`, the
+The target deployment policy keeps pull requests validation-only. Development
+deployment will run from `main`; production will use `workflow_dispatch`, the
 same commit artifact, and an approved GitHub `production` environment.
 
 Workflow permissions default to `contents: read`; the deployment job alone adds
@@ -764,7 +795,7 @@ Aspire and `azd` provision:
 - Log Analytics workspace;
 - Application Insights/Azure Monitor connection;
 - managed identities and least-privilege role assignments;
-- Key Vault only if a confidential upstream secret is required.
+- native Container Apps secrets for confidential upstream credentials.
 
 The Aspire AppHost is the only maintained infrastructure model. No separate
 `infra/` directory or hand-maintained Bicep files are required. Resource names
@@ -786,12 +817,17 @@ protection and registry retention are enabled where supported.
 
 ### Milestone 0: Contract and skeleton
 
+Status: implemented.
+
 - Add solution, central package management, and requested projects.
 - Author and approve the internal OpenAPI contract.
 - Configure NSwag generation and contract validation.
 - Add Aspire references and local stub resources.
 
 ### Milestone 1: Data foundation
+
+Status: implemented for the P0 data path; custom production telemetry remains
+in Milestone 4.
 
 - Implement CSV loading and validation.
 - Implement SVY21 conversion and immutable catalog.
@@ -801,12 +837,17 @@ protection and registry retention are enabled where supported.
 
 ### Milestone 2: Search and recommendation API
 
+Status: implemented for P0.
+
 - Implement geodesic search and domain filters.
 - Implement vehicle compatibility, occupancy, freshness, ranking, and
   alternatives.
 - Implement all P0 API operations and generated-client conformance tests.
 
 ### Milestone 3: P0 WebApp
+
+Status: implemented with component and state tests; browser-matrix validation is
+deferred to Milestone 5.
 
 - Implement Interactive Server shell and Fluent UI layout.
 - Integrate Google Maps and browser geolocation.
@@ -816,6 +857,10 @@ protection and registry retention are enabled where supported.
   desktop layouts above that breakpoint.
 
 ### Milestone 4: P0 cross-cutting completion
+
+Status: in progress. Aspire composition and the current validation workflow are
+implemented; custom production observability, browser automation, packaging
+gates, and deployment automation remain.
 
 - Complete reliability, data-quality, privacy, security, and observability
   requirements.

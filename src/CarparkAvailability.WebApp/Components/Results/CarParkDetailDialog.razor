@@ -1,0 +1,192 @@
+<FluentDialog Hidden="@(Detail is null && !IsLoading && string.IsNullOrWhiteSpace(ErrorMessage))"
+              Modal="true"
+              TrapFocus="true"
+              PreventScroll="true"
+              aria-label="Car park details"
+              @ondialogdismiss="CloseAsync">
+    <FluentDialogHeader Visible="false" />
+    @if (IsLoading)
+    {
+        <div class="detail-loading" role="status">
+            <FluentProgressRing aria-label="Loading car park details" />
+            <strong>Loading car park details…</strong>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="detail-dialog">
+            <div class="detail-header">
+                <div>
+                    <p class="eyebrow">Car park details</p>
+                    <h2>Details could not be loaded</h2>
+                </div>
+                <FluentButton Appearance="Appearance.Stealth" aria-label="Close car park details" @onclick="CloseAsync">✕</FluentButton>
+            </div>
+            <p class="detail-warning" role="alert">@ErrorMessage</p>
+        </div>
+    }
+    else if (Detail is not null)
+    {
+        <div class="detail-dialog">
+            <div class="detail-header">
+                <div>
+                    <p class="eyebrow">Car park details</p>
+                    <h2>@Detail.Address</h2>
+                    <p>@Detail.CarParkNumber</p>
+                </div>
+                <FluentButton Appearance="Appearance.Stealth" aria-label="Close car park details" @onclick="CloseAsync">✕</FluentButton>
+            </div>
+
+            <section aria-labelledby="lots-heading">
+                <h3 id="lots-heading">Lot availability</h3>
+                <div class="all-lots">
+                    @if (Detail.Availability.Lots.Count == 0)
+                    {
+                        <p>Lot availability is unavailable.</p>
+                    }
+                    @foreach (LotAvailability lot in Detail.Availability.Lots)
+                    {
+                        <div class="lot-detail">
+                            <strong>@LotTypeLabel(lot.LotType)</strong>
+                            <span><b>@lot.AvailableLots</b> available of @lot.TotalLots</span>
+                        </div>
+                    }
+                </div>
+                <p class="freshness-line">
+                    @FreshnessIcon(Detail.Availability.Freshness)
+                    <strong>@FreshnessLabel(Detail.Availability.Freshness)</strong>
+                    · @UpdateLabel(Detail.Availability.SourceUpdateTime)
+                </p>
+            </section>
+
+            @if (!Detail.Compatible || Detail.IncompleteMetadata)
+            {
+                <p class="detail-warning" role="status">
+                    <span aria-hidden="true">⚠</span>
+                    @(Detail.IncompleteMetadata
+                        ? "Some static or live information is incomplete, so this car park is not a verified recommendation."
+                        : $"This car park is incompatible with the selected {VehicleLabel(VehicleType)} or its compatibility is unknown.")
+                </p>
+            }
+
+            <section aria-labelledby="conditions-heading">
+                <h3 id="conditions-heading">Operating conditions</h3>
+                <dl class="detail-grid">
+                    <div><dt>Car park type</dt><dd>@CarParkTypeLabel(Detail.CarParkType)@SourceTypeSuffix()</dd></div>
+                    <div><dt>Parking system</dt><dd>@AvailableText(Detail.ParkingSystem)</dd></div>
+                    <div><dt>Night parking</dt><dd>@(Detail.NightParking ? "Available" : "Not available")</dd></div>
+                    <div><dt>Decks</dt><dd>@(Detail.Decks?.ToString() ?? "Unavailable")</dd></div>
+                    <div><dt>Height restriction</dt><dd>@(Detail.GantryHeight is double height ? $"{height:0.0} m" : "Unavailable")</dd></div>
+                    <div><dt>Basement</dt><dd>@(Detail.Basement ? "Yes" : "No")</dd></div>
+                    <div><dt>Short-term parking</dt><dd>@AvailableText(Detail.ShortTermParking)</dd></div>
+                    <div><dt>Free parking label</dt><dd>@AvailableText(Detail.FreeParking)</dd></div>
+                </dl>
+                <p class="field-note">Operating labels are shown as published and are not used to infer eligibility unless verified.</p>
+            </section>
+
+            @if (IsFull)
+            {
+                <section class="alternatives" aria-labelledby="alternatives-heading">
+                    <h3 id="alternatives-heading">Nearby alternatives with verified availability</h3>
+                    @if (Detail.Alternatives.Count == 0)
+                    {
+                        <p>No verified alternative was found within 500 metres. Try changing filters or searching another map area.</p>
+                    }
+                    else
+                    {
+                        @foreach (CarParkSearchResult alternative in Detail.Alternatives)
+                        {
+                            <FluentButton Appearance="Appearance.Outline"
+                                          @onclick="@(() => OnSelectAlternative.InvokeAsync(alternative.CarParkNumber))">
+                                <span class="alternative-label">
+                                    <strong>@alternative.Address</strong>
+                                    <span>@Math.Round(alternative.DistanceMetres) m away · @AlternativeLots(alternative) available</span>
+                                </span>
+                            </FluentButton>
+                        }
+                    }
+                </section>
+            }
+        </div>
+    }
+</FluentDialog>
+
+@code {
+    [Parameter]
+    public CarParkDetail? Detail { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    [Parameter]
+    public VehicleType VehicleType { get; set; }
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<string> OnSelectAlternative { get; set; }
+
+    private LotType SelectedLotType => VehicleType switch
+    {
+        VehicleType.HeavyVehicle => LotType.HeavyVehicle,
+        VehicleType.Motorcycle => LotType.Motorcycle,
+        _ => LotType.Car,
+    };
+
+    private bool IsFull => Detail?.Availability.Lots
+        .FirstOrDefault(lot => lot.LotType == SelectedLotType)?.AvailableLots == 0;
+
+    private Task CloseAsync() => OnClose.InvokeAsync();
+
+    private int AlternativeLots(CarParkSearchResult alternative) =>
+        alternative.Availability.Lots.FirstOrDefault(lot => lot.LotType == SelectedLotType)?.AvailableLots ?? 0;
+
+    private string SourceTypeSuffix() =>
+        string.IsNullOrWhiteSpace(Detail?.SourceCarParkType) ? string.Empty : $" ({Detail.SourceCarParkType})";
+
+    private static string AvailableText(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "Unavailable" : value;
+
+    private static string FreshnessIcon(Freshness freshness) => freshness switch
+    {
+        Freshness.Fresh => "✓",
+        Freshness.Stale => "◷",
+        _ => "!",
+    };
+
+    private static string FreshnessLabel(Freshness freshness) => freshness switch
+    {
+        Freshness.Fresh => "Fresh",
+        Freshness.Stale => "Stale data",
+        _ => "Availability unavailable",
+    };
+
+    private static string UpdateLabel(DateTimeOffset? updateTime) =>
+        updateTime is null ? "no source update time" : $"updated {SingaporeTime.Format(updateTime.Value)}";
+
+    private static string VehicleLabel(VehicleType vehicleType) => vehicleType switch
+    {
+        VehicleType.HeavyVehicle => "heavy vehicle",
+        VehicleType.Motorcycle => "motorcycle",
+        _ => "car",
+    };
+
+    private static string LotTypeLabel(LotType lotType) => lotType switch
+    {
+        LotType.HeavyVehicle => "Heavy vehicle",
+        LotType.Motorcycle => "Motorcycle",
+        LotType.Other => "Other",
+        _ => "Car",
+    };
+
+    private static string CarParkTypeLabel(CarParkType carParkType) => carParkType switch
+    {
+        CarParkType.MultiStorey => "Multi-storey",
+        CarParkType.Underground => "Underground",
+        _ => "Surface",
+    };
+}

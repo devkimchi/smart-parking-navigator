@@ -1,11 +1,37 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
+    <PackageReference Include="CsvHelper" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="NSwag.MSBuild" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\CarparkAvailability.ServiceDefaults\CarparkAvailability.ServiceDefaults.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\data\HDBCarparkInformation.csv"
+             Link="Data\HDBCarparkInformation.csv"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <DataGovSgApiContract>$(MSBuildProjectDirectory)\..\..\data\CarparkAvailability.json</DataGovSgApiContract>
+    <DataGovSgApiClient>$(MSBuildProjectDirectory)\obj\$(Configuration)\$(TargetFramework)\Generated\DataGovSgApiClient.g.cs</DataGovSgApiClient>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(DataGovSgApiClient)" Visible="false" />
+  </ItemGroup>
+
+  <Target Name="GenerateDataGovSgApiClient"
+          BeforeTargets="CoreCompile"
+          Inputs="$(DataGovSgApiContract)"
+          Outputs="$(DataGovSgApiClient)">
+    <MakeDir Directories="$(MSBuildProjectDirectory)\obj\$(Configuration)\$(TargetFramework)\Generated" />
+    <Exec Command="$(NSwagExe_Net90) openapi2csclient /input:&quot;$(DataGovSgApiContract)&quot; /output:&quot;$(DataGovSgApiClient)&quot; /namespace:CarparkAvailability.ApiApp.Infrastructure.DataGovSg.Generated /classname:DataGovSgApiClient /UseBaseUrl:false /GenerateClientInterfaces:true /GenerateOptionalParameters:true /JsonLibrary:SystemTextJson" />
+  </Target>
 
 </Project>

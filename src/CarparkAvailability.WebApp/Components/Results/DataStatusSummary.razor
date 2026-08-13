@@ -1,0 +1,70 @@
+@if (Unavailable)
+{
+    <aside class="data-status unavailable">
+        <div class="data-status-message" role="status">
+            <span aria-hidden="true">!</span>
+            <span><strong>Data status unavailable.</strong> Results still show their source update times.</span>
+        </div>
+        <FluentButton Appearance="Appearance.Accent"
+                      Disabled="@IsRefreshing"
+                      @onclick="OnRefresh">
+            @(IsRefreshing ? "Refreshing…" : "Refresh data")
+        </FluentButton>
+    </aside>
+}
+else if (Status is not null)
+{
+    <aside class="data-status @Status.Freshness.ToString().ToLowerInvariant()">
+        <div class="data-status-message" role="status">
+            <span aria-hidden="true">@FreshnessIcon(Status.Freshness)</span>
+            <span>
+                @if (Status.Freshness is Freshness.Unavailable)
+                {
+                    <strong>Live availability is unavailable.</strong>
+                }
+                @if (Status.SourceUpdateTime is DateTimeOffset sourceTime)
+                {
+                    <text> Latest aggregate update: @SingaporeTime.Format(sourceTime).</text>
+                }
+                @if (!string.IsNullOrWhiteSpace(Status.LastError))
+                {
+                    <text> The latest refresh failed; last-known data is shown honestly.</text>
+                }
+            </span>
+        </div>
+        <FluentButton Appearance="Appearance.Accent"
+                      Disabled="@(IsRefreshing || Status.Freshness is Freshness.Fresh)"
+                      @onclick="OnRefresh">
+            @(IsRefreshing ? "Refreshing…" : "Refresh data")
+        </FluentButton>
+    </aside>
+}
+
+@if (!string.IsNullOrWhiteSpace(RefreshMessage))
+{
+    <p class="data-refresh-message" role="status">@RefreshMessage</p>
+}
+
+@code {
+    [Parameter]
+    public DataStatus? Status { get; set; }
+
+    [Parameter]
+    public bool Unavailable { get; set; }
+
+    [Parameter]
+    public bool IsRefreshing { get; set; }
+
+    [Parameter]
+    public string? RefreshMessage { get; set; }
+
+    [Parameter]
+    public EventCallback OnRefresh { get; set; }
+
+    private static string FreshnessIcon(Freshness freshness) => freshness switch
+    {
+        Freshness.Fresh => "✓",
+        Freshness.Stale => "◷",
+        _ => "!",
+    };
+}

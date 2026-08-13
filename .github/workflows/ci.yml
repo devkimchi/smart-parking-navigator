@@ -25,29 +25,29 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Detect solution or project
-        id: dotnet
-        shell: bash
+      - name: Trust HTTPS developer certificate
         run: |
-          target="$(find . -maxdepth 3 -type f \( -name '*.slnx' -o -name '*.sln' \) -print -quit)"
-          if [ -z "$target" ]; then
-            target="$(find . -maxdepth 3 -type f -name '*.csproj' -print -quit)"
+          if ! dotnet dev-certs https --trust; then
+            test -n "$(find "$HOME/.aspnet/dev-certs/trust" -type f -print -quit)"
           fi
-          echo "target=$target" >> "$GITHUB_OUTPUT"
-
-      - name: Skip until application projects are added
-        if: steps.dotnet.outputs.target == ''
-        run: echo "No .NET solution or project is tracked yet."
+          echo "SSL_CERT_DIR=$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs" >> "$GITHUB_ENV"
 
       - name: Restore
-        if: steps.dotnet.outputs.target != ''
-        run: dotnet restore "${{ steps.dotnet.outputs.target }}"
+        run: dotnet restore CarparkAvailability.slnx
 
-      - name: Build
-        if: steps.dotnet.outputs.target != ''
-        run: dotnet build "${{ steps.dotnet.outputs.target }}" --no-restore --configuration Release
+      - name: Validate OpenAPI contracts and generate clients
+        run: |
+          dotnet msbuild src/CarparkAvailability.ApiApp/CarparkAvailability.ApiApp.csproj \
+            -target:GenerateDataGovSgApiClient \
+            -property:Configuration=Release \
+            -property:TargetFramework=net10.0
+          dotnet msbuild src/CarparkAvailability.WebApp/CarparkAvailability.WebApp.csproj \
+            -target:GenerateCarparkApiClient \
+            -property:Configuration=Release \
+            -property:TargetFramework=net10.0
+
+      - name: Build Release
+        run: dotnet build CarparkAvailability.slnx --no-restore --configuration Release
 
       - name: Test
-        if: steps.dotnet.outputs.target != ''
-        run: dotnet test "${{ steps.dotnet.outputs.target }}" --no-build --configuration Release --verbosity normal
-
+        run: dotnet test CarparkAvailability.slnx --no-build --configuration Release --verbosity normal
