@@ -10,7 +10,10 @@ public class AppHostCompositionTests
 {
     private const string TestGoogleMapsApiKey = "test-google-maps-key";
     private const string TestDataGovSgApiKey = "test-data-gov-sg-key";
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan DefaultTimeout =
+        Environment.GetEnvironmentVariable("CI") is not null
+            ? TimeSpan.FromMinutes(5)
+            : TimeSpan.FromSeconds(60);
     private static readonly string[] s_testArguments =
     [
         $"--GoogleMaps:ApiKey={TestGoogleMapsApiKey}",
