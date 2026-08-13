@@ -14,10 +14,7 @@ IResourceBuilder<ParameterResource> dataGovSgApiKey = builder.AddParameterFromCo
     "DataGovSg:ApiKey",
     secret: true);
 
-if (builder.ExecutionContext.IsPublishMode)
-{
-    builder.AddAzureContainerAppEnvironment("environment");
-}
+builder.AddAzureContainerAppEnvironment("environment");
 
 IResourceBuilder<ProjectResource> api = builder
     .AddProject<Projects.CarparkAvailability_ApiApp>("apiapp")
