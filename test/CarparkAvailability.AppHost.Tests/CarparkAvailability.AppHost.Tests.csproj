@@ -2,6 +2,9 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\CarparkAvailability.AppHost\CarparkAvailability.AppHost.csproj" />
   </ItemGroup>
 

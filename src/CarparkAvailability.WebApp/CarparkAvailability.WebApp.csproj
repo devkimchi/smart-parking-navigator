@@ -3,6 +3,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
     <PackageReference Include="NSwag.MSBuild" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\CarparkAvailability.ServiceDefaults\CarparkAvailability.ServiceDefaults.csproj" />
   </ItemGroup>
 

@@ -2,6 +2,9 @@
 
   <ItemGroup>
     <PackageReference Include="bunit" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\CarparkAvailability.WebApp\CarparkAvailability.WebApp.csproj" />
   </ItemGroup>
 
