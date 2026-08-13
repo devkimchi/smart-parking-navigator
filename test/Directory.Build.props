@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.Testing" />
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit.v3" />
@@ -17,8 +16,6 @@
   <ItemGroup>
     <Using Include="System.Net" />
     <Using Include="Microsoft.Extensions.DependencyInjection" />
-    <Using Include="Aspire.Hosting.ApplicationModel" />
-    <Using Include="Aspire.Hosting.Testing" />
     <Using Include="Xunit" />
   </ItemGroup>
 </Project>
