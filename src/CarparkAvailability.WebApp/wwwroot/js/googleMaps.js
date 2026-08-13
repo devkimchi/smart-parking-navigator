@@ -346,8 +346,7 @@ export function setMarkers(items, origin, originLabel) {
             marker.setPosition(position);
             marker.setTitle(`${item.label}. ${item.availableLots ?? "Unknown"} lots available`);
         }
-        marker.setZIndex(item.selected ? 1000 : item.recommended ? 500 : undefined);
-        marker.setAnimation(item.selected ? google.maps.Animation.BOUNCE : null);
+        marker.setZIndex(item.recommended ? 500 : undefined);
         bounds.extend(position);
     }
 

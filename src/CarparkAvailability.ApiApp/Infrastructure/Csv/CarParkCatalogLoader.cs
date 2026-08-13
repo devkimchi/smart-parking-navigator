@@ -173,7 +173,7 @@ public sealed class CarParkCatalogLoader(
         return true;
     }
 
-    public static bool TryNormalizeType(string sourceValue, out CarParkType type)
+    private static bool TryNormalizeType(string sourceValue, out CarParkType type)
     {
         string normalized = sourceValue.Trim().ToUpperInvariant();
         if (normalized.Contains("MULTI-STOREY", StringComparison.Ordinal) ||

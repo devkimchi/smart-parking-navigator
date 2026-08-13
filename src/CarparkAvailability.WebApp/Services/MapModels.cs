@@ -15,8 +15,7 @@ public sealed record MapMarker(
     double Latitude,
     double Longitude,
     int? AvailableLots,
-    bool Recommended,
-    bool Selected);
+    bool Recommended);
 
 public sealed record GeocodeResult(
     GeocodeResultStatus Status,
