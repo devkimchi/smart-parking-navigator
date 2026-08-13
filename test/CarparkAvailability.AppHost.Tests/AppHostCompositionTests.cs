@@ -41,6 +41,7 @@ public class AppHostCompositionTests
         ParameterResource googleMapsApiKey = Assert.Single(
             appHost.Resources.OfType<ParameterResource>(),
             static parameter => parameter.Name == "google-maps-api-key");
+        Assert.DoesNotContain(appHost.Resources, static resource => resource is AzureContainerAppEnvironmentResource);
         Assert.True(dataGovSgApiKey.Secret);
         Assert.True(googleMapsApiKey.Secret);
         Assert.Equal(
