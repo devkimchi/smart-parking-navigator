@@ -25,14 +25,9 @@ cd smart-parking-navigator
 dotnet restore CarparkAvailability.slnx
 ```
 
-Store development credentials in the AppHost user-secrets store:
-
-```powershell
-dotnet user-secrets set "GoogleMaps:ApiKey" "<your-restricted-api-key>" `
-  --project src\CarparkAvailability.AppHost
-dotnet user-secrets set "DataGovSg:ApiKey" "<your-data-gov-sg-api-key>" `
-  --project src\CarparkAvailability.AppHost
-```
+Configure development credentials by following
+[Google Maps API Key Setup](docs/google-maps-api-key.md) and
+[data.gov.sg API Key Setup](docs/data-gov-sg-api-key.md).
 
 Run the complete application through its Aspire AppHost:
 
