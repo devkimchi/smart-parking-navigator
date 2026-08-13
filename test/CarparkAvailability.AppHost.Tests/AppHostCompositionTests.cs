@@ -139,17 +139,8 @@ public class AppHostCompositionTests
         await using DistributedApplication app = await appHost
             .BuildAsync(cancellationTokenSource.Token)
             .WaitAsync(DefaultTimeout, cancellationTokenSource.Token);
-        try
-        {
-            await app.StartAsync(cancellationTokenSource.Token)
-                .WaitAsync(DefaultTimeout, cancellationTokenSource.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            await WriteResourceLogsAsync(app, "apiapp");
-            await WriteResourceLogsAsync(app, "webapp");
-            throw;
-        }
+        await app.StartAsync(cancellationTokenSource.Token)
+            .WaitAsync(DefaultTimeout, cancellationTokenSource.Token);
 
         await app.ResourceNotifications
             .WaitForResourceHealthyAsync("apiapp", cancellationTokenSource.Token)
@@ -185,18 +176,6 @@ public class AppHostCompositionTests
                 Assert.Equal(ProbeType.Liveness, probe.Type);
                 Assert.Equal("/alive", probe.Path);
             });
-    }
-
-    private static async Task WriteResourceLogsAsync(DistributedApplication app, string resourceName)
-    {
-        ResourceLoggerService loggerService = app.Services.GetRequiredService<ResourceLoggerService>();
-        await foreach (IReadOnlyList<LogLine> batch in loggerService.GetAllAsync(resourceName))
-        {
-            foreach (LogLine line in batch)
-            {
-                Console.WriteLine("[{0}] {1}", resourceName, line.Content);
-            }
-        }
     }
 
     private static async Task<Dictionary<string, object>> GatherEnvironmentAsync(
