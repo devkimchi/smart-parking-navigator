@@ -95,14 +95,16 @@ flowchart LR
 
 ## Further Reading
 
+### Product
+
+- [Initial Product Ideation](IDEATION.md)
 - [Product Requirements Document](PRD.md)
 - [Technical Requirements Document](TRD.md)
-- [Initial Product Ideation](IDEATION.md)
-- [Contributing Guide](CONTRIBUTING.md)
 - [Google Maps API Key Setup](docs/google-maps-api-key.md)
 - [data.gov.sg API Key Setup](docs/data-gov-sg-api-key.md)
-- [Security Policy](SECURITY.md)
-- [MIT License](LICENSE)
+
+### Tools
+
 - [.NET Aspire documentation](https://aspire.dev/)
 - [ASP.NET Core Blazor render modes](https://learn.microsoft.com/aspnet/core/blazor/components/render-modes)
 - [ASP.NET Core OpenAPI](https://learn.microsoft.com/aspnet/core/fundamentals/openapi/overview)
