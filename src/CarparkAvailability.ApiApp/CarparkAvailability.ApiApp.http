@@ -1,6 +1,20 @@
 @CarparkAvailability.ApiApp_HostAddress = http://localhost:5199
+@Latitude = 1.3007
+@Longitude = 103.8559
+@CarParkNumber = ACB
 
-GET {{CarparkAvailability.ApiApp_HostAddress}}/weatherforecast/
+### Search nearby car parks
+GET {{CarparkAvailability.ApiApp_HostAddress}}/api/carparks?latitude={{Latitude}}&longitude={{Longitude}}&vehicleType=Car&availableOnly=false
 Accept: application/json
 
-###
+### Get car park details and alternatives
+GET {{CarparkAvailability.ApiApp_HostAddress}}/api/carparks/{{CarParkNumber}}?vehicleType=Car&latitude={{Latitude}}&longitude={{Longitude}}
+Accept: application/json
+
+### Check catalogue and availability data status
+GET {{CarparkAvailability.ApiApp_HostAddress}}/api/data-status
+Accept: application/json
+
+### Request an availability refresh
+POST {{CarparkAvailability.ApiApp_HostAddress}}/api/data-status/refresh
+Accept: application/json
