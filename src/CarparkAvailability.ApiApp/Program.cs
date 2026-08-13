@@ -25,7 +25,7 @@ builder.Services
     .Validate(
         static options => options.BaseUrl.IsAbsoluteUri &&
             options.BaseUrl.Scheme == Uri.UriSchemeHttps &&
-            options.BaseUrl.AbsolutePath.EndsWith("/", StringComparison.Ordinal),
+        options.BaseUrl.AbsolutePath.EndsWith('/'),
         "Availability base URL must be an absolute HTTPS URL ending with '/'.")
     .Validate(
         static options => options.PollInterval > TimeSpan.Zero &&
@@ -90,5 +90,3 @@ app.MapCarParkApi();
 app.MapDefaultEndpoints();
 
 app.Run();
-
-public partial class Program;
