@@ -21,5 +21,4 @@ public sealed record CarPark(
     bool NightParking,
     int CarParkDecks,
     double GantryHeight,
-    bool Basement,
-    bool IncompleteMetadata);
+    bool Basement);

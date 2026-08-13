@@ -143,7 +143,7 @@ public sealed class CarParkSearchService(
             liveRecord?.UpdateTime,
             now,
             _freshnessThreshold);
-        bool incomplete = carPark.IncompleteMetadata || liveRecord is null;
+        bool incomplete = liveRecord is null;
         List<string> exclusionReasons = [];
 
         if (liveRecord is null)

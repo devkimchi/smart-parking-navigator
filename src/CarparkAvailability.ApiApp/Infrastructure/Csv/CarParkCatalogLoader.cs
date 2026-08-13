@@ -168,8 +168,7 @@ public sealed class CarParkCatalogLoader(
             nightParking,
             decks,
             gantryHeight,
-            basement,
-            false);
+            basement);
         reason = string.Empty;
         return true;
     }

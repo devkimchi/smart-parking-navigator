@@ -201,7 +201,6 @@ public sealed class SearchServiceTests
             nightParking,
             1,
             2,
-            false,
             false);
     }
 

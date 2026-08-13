@@ -64,7 +64,6 @@ builder.Services.AddSingleton(static serviceProvider =>
 builder.Services.AddSingleton<AvailabilitySnapshotStore>();
 builder.Services.AddSingleton<CarParkSearchService>();
 builder.Services.AddSingleton<DataStatusService>();
-builder.Services.AddHostedService<CatalogInitializationService>();
 builder.Services.AddHttpClient<IDataGovSgApiClient, DataGovSgApiClient>(
     static (serviceProvider, client) =>
     {
@@ -78,6 +77,7 @@ builder.Services.AddHostedService(
     static serviceProvider => serviceProvider.GetRequiredService<AvailabilityRefreshService>());
 
 WebApplication app = builder.Build();
+_ = app.Services.GetRequiredService<CarParkCatalog>();
 
 app.UseExceptionHandler();
 if (!app.Environment.IsProduction())
