@@ -112,8 +112,6 @@ internal sealed class FakeMapInterop : IMapInterop
 {
     public int LocationRequestCount { get; private set; }
 
-    public bool Initialized { get; set; } = true;
-
     public GeocodeResult GeocodeResult { get; set; } = new(
         GeocodeResultStatus.Resolved,
         new MapCoordinate(1.3, 103.8),
@@ -125,22 +123,16 @@ internal sealed class FakeMapInterop : IMapInterop
         null,
         "Location permission was denied.");
 
-    public MapLocationLabel? ResolvedLocation { get; set; } = new(
-        "Marina Bay Sands",
-        "10 Bayfront Avenue, Singapore 018956");
-
     public List<MapMarker> Markers { get; } = [];
 
     public string? OriginLabel { get; private set; }
-
-    public string? SelectedMarker { get; private set; }
 
     public Task<bool> InitializeAsync(
         ElementReference mapElement,
         object callbackReceiver,
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(Initialized);
+        return Task.FromResult(true);
     }
 
     public Task<GeocodeResult> GeocodeAsync(
@@ -160,7 +152,9 @@ internal sealed class FakeMapInterop : IMapInterop
         MapCoordinate coordinate,
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(ResolvedLocation);
+        return Task.FromResult<MapLocationLabel?>(new(
+            "Marina Bay Sands",
+            "10 Bayfront Avenue, Singapore 018956"));
     }
 
     public Task SetMarkersAsync(
@@ -179,7 +173,6 @@ internal sealed class FakeMapInterop : IMapInterop
         string? carParkNumber,
         CancellationToken cancellationToken = default)
     {
-        SelectedMarker = carParkNumber;
         return Task.CompletedTask;
     }
 
