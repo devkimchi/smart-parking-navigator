@@ -10,10 +10,7 @@ public class AppHostCompositionTests
 {
     private const string TestGoogleMapsApiKey = "test-google-maps-key";
     private const string TestDataGovSgApiKey = "test-data-gov-sg-key";
-    private static readonly TimeSpan DefaultTimeout =
-        Environment.GetEnvironmentVariable("CI") is not null
-            ? TimeSpan.FromMinutes(5)
-            : TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(60);
     private static readonly string[] s_testArguments =
     [
         $"--GoogleMaps:ApiKey={TestGoogleMapsApiKey}",
@@ -29,7 +26,6 @@ public class AppHostCompositionTests
             await DistributedApplicationTestingBuilder.CreateAsync<Projects.CarparkAvailability_AppHost>(
                 s_testArguments,
                 cancellationTokenSource.Token);
-
         ProjectResource api = Assert.IsType<ProjectResource>(
             Assert.Single(appHost.Resources, static resource => resource.Name == "apiapp"));
         ProjectResource web = Assert.IsType<ProjectResource>(
@@ -126,7 +122,6 @@ public class AppHostCompositionTests
             await DistributedApplicationTestingBuilder.CreateAsync<Projects.CarparkAvailability_AppHost>(
                 s_testArguments,
                 cancellationTokenSource.Token);
-
         ProjectResource api = Assert.IsType<ProjectResource>(
             Assert.Single(appHost.Resources, static resource => resource.Name == "apiapp"));
         ProjectResource web = Assert.IsType<ProjectResource>(
@@ -144,8 +139,17 @@ public class AppHostCompositionTests
         await using DistributedApplication app = await appHost
             .BuildAsync(cancellationTokenSource.Token)
             .WaitAsync(DefaultTimeout, cancellationTokenSource.Token);
-        await app.StartAsync(cancellationTokenSource.Token)
-            .WaitAsync(DefaultTimeout, cancellationTokenSource.Token);
+        try
+        {
+            await app.StartAsync(cancellationTokenSource.Token)
+                .WaitAsync(DefaultTimeout, cancellationTokenSource.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            await WriteResourceLogsAsync(app, "apiapp");
+            await WriteResourceLogsAsync(app, "webapp");
+            throw;
+        }
 
         await app.ResourceNotifications
             .WaitForResourceHealthyAsync("apiapp", cancellationTokenSource.Token)
@@ -181,6 +185,18 @@ public class AppHostCompositionTests
                 Assert.Equal(ProbeType.Liveness, probe.Type);
                 Assert.Equal("/alive", probe.Path);
             });
+    }
+
+    private static async Task WriteResourceLogsAsync(DistributedApplication app, string resourceName)
+    {
+        ResourceLoggerService loggerService = app.Services.GetRequiredService<ResourceLoggerService>();
+        await foreach (IReadOnlyList<LogLine> batch in loggerService.GetAllAsync(resourceName))
+        {
+            foreach (LogLine line in batch)
+            {
+                Console.WriteLine("[{0}] {1}", resourceName, line.Content);
+            }
+        }
     }
 
     private static async Task<Dictionary<string, object>> GatherEnvironmentAsync(
