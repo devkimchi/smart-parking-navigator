@@ -3,7 +3,6 @@ let geocoder;
 let callback;
 let idleListener;
 let originMarker;
-let selectedCarParkNumber;
 let mapElement;
 let userMapInteraction = false;
 const markers = new Map();
@@ -379,10 +378,9 @@ export function setMarkers(items, origin, originLabel) {
 }
 
 export function selectMarker(carParkNumber) {
-    selectedCarParkNumber = carParkNumber;
     for (const [id, marker] of markers) {
-        marker.setZIndex(id === selectedCarParkNumber ? 1000 : undefined);
-        marker.setAnimation(id === selectedCarParkNumber ? google.maps.Animation.BOUNCE : null);
+        marker.setZIndex(id === carParkNumber ? 1000 : undefined);
+        marker.setAnimation(id === carParkNumber ? google.maps.Animation.BOUNCE : null);
     }
 
     const selected = markers.get(carParkNumber);
@@ -404,7 +402,6 @@ export function dispose() {
     map = null;
     geocoder = null;
     callback = null;
-    selectedCarParkNumber = null;
     userMapInteraction = false;
     mapElement?.removeEventListener("pointerdown", markUserMapInteraction);
     mapElement?.removeEventListener("wheel", markUserMapInteraction);

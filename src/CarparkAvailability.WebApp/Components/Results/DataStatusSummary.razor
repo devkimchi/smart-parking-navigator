@@ -20,7 +20,7 @@ else if (Status is not null)
             <span>
                 @if (Status.Freshness is Freshness.Unavailable)
                 {
-                    <strong>@FreshnessLabel(Status.Freshness).</strong>
+                    <strong>Live availability is unavailable.</strong>
                 }
                 @if (Status.SourceUpdateTime is DateTimeOffset sourceTime)
                 {
@@ -66,12 +66,5 @@ else if (Status is not null)
         Freshness.Fresh => "✓",
         Freshness.Stale => "◷",
         _ => "!",
-    };
-
-    private static string FreshnessLabel(Freshness freshness) => freshness switch
-    {
-        Freshness.Fresh => "Live parking data is fresh",
-        Freshness.Stale => "Parking data is stale",
-        _ => "Live availability is unavailable",
     };
 }

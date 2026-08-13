@@ -163,7 +163,13 @@
                 }
                 else
                 {
-                    @OutcomeMessage()
+                    @if (OutcomeTitle is string outcomeTitle)
+                    {
+                        <div class="state-card">
+                            <strong>@outcomeTitle</strong>
+                            <p>@OutcomeDescription</p>
+                        </div>
+                    }
                 }
             </div>
 
@@ -550,42 +556,24 @@
         }
     }
 
-    private RenderFragment OutcomeMessage() => builder =>
+    private string? OutcomeTitle => SearchState.Outcome switch
     {
-        string? title = SearchState.Outcome switch
-        {
-            SearchOutcome.Idle => "Start with a destination",
-            SearchOutcome.NoDestinationMatch => "Destination not found",
-            SearchOutcome.AmbiguousDestination => "Choose a more specific destination",
-            SearchOutcome.NoNearbyCarParks => "No HDB car parks found nearby",
-            SearchOutcome.NoFilteredResults => "No car parks match these filters",
-            SearchOutcome.ApiFailure => "Parking data is temporarily unavailable",
-            SearchOutcome.MapFailure => "Destination search is unavailable",
-            _ => null,
-        };
+        SearchOutcome.Idle => "Start with a destination",
+        SearchOutcome.NoDestinationMatch => "Destination not found",
+        SearchOutcome.AmbiguousDestination => "Choose a more specific destination",
+        SearchOutcome.NoNearbyCarParks => "No HDB car parks found nearby",
+        SearchOutcome.NoFilteredResults => "No car parks match these filters",
+        SearchOutcome.ApiFailure => "Parking data is temporarily unavailable",
+        SearchOutcome.MapFailure => "Destination search is unavailable",
+        _ => null,
+    };
 
-        if (title is null)
-        {
-            return;
-        }
-
-        string message = SearchState.ErrorMessage ?? SearchState.Outcome switch
-        {
-            SearchOutcome.Idle => "Search an address, landmark, or use your current location.",
-            SearchOutcome.NoNearbyCarParks => "Try another destination or search the visible map area.",
-            SearchOutcome.NoFilteredResults => "Clear one or more filters to see nearby options.",
-            _ => "Check the destination and try again.",
-        };
-
-        builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "class", "state-card");
-        builder.OpenElement(2, "strong");
-        builder.AddContent(3, title);
-        builder.CloseElement();
-        builder.OpenElement(4, "p");
-        builder.AddContent(5, message);
-        builder.CloseElement();
-        builder.CloseElement();
+    private string OutcomeDescription => SearchState.ErrorMessage ?? SearchState.Outcome switch
+    {
+        SearchOutcome.Idle => "Search an address, landmark, or use your current location.",
+        SearchOutcome.NoNearbyCarParks => "Try another destination or search the visible map area.",
+        SearchOutcome.NoFilteredResults => "Clear one or more filters to see nearby options.",
+        _ => "Check the destination and try again.",
     };
 
     private void StateChanged()

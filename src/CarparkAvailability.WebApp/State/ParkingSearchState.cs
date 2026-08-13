@@ -63,9 +63,6 @@ public sealed class ParkingSearchState(ICarparkAvailabilityApiClient apiClient)
 
     public bool HasActiveFilters => AvailableOnly || NightParking || _carParkTypes.Count > 0;
 
-    public bool CanRequestLocation =>
-        LocationState is not LocationPermissionState.Denied and not LocationPermissionState.Requesting;
-
     public void SetVehicleType(VehicleType vehicleType)
     {
         InvalidatePendingRequests();
@@ -128,7 +125,7 @@ public sealed class ParkingSearchState(ICarparkAvailabilityApiClient apiClient)
 
     public bool BeginLocationRequest()
     {
-        if (!CanRequestLocation)
+        if (LocationState is LocationPermissionState.Denied or LocationPermissionState.Requesting)
         {
             return false;
         }
