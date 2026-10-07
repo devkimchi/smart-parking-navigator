@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace CarparkAvailability.WebApp.Services;
 
 public static class SingaporeTime
@@ -6,6 +8,7 @@ public static class SingaporeTime
 
     public static string Format(DateTimeOffset value)
     {
-        return $"{value.ToOffset(s_offset):d MMM, h:mm tt} SGT";
+        string timestamp = value.ToOffset(s_offset).ToString("d MMM, h:mm tt", CultureInfo.InvariantCulture);
+        return $"{timestamp} SGT";
     }
 }

@@ -1,24 +1,51 @@
-<FluentDialog Hidden="@(!Visible)"
-              Modal="true"
-              TrapFocus="true"
-              PreventScroll="true"
-              aria-label="Current location outside Singapore"
-              @ondialogdismiss="DismissAsync">
-    <FluentDialogHeader Visible="false" />
-    <div class="location-warning-dialog">
-        <p class="eyebrow">Current location</p>
-        <h2>You’re outside Singapore</h2>
-        <p role="alert">Smart Parking Navigator currently searches only for HDB car parks in Singapore.</p>
-        <FluentButton Appearance="Appearance.Accent" Autofocus="true" @onclick="DismissAsync">Got it</FluentButton>
-    </div>
-</FluentDialog>
+@if (Visible)
+{
+    <FluentDialog @ref="_dialog"
+                  Modal="true"
+                  aria-label="Current location outside Singapore"
+                  OnStateChange="DialogStateChangedAsync">
+        <div class="location-warning-dialog">
+            <p class="eyebrow">Current location</p>
+            <h2>You’re outside Singapore</h2>
+            <p role="alert">Smart Parking Navigator currently searches only for HDB car parks in Singapore.</p>
+            <FluentButton Appearance="ButtonAppearance.Primary" AutoFocus="true" @onclick="DismissAsync">Got it</FluentButton>
+        </div>
+    </FluentDialog>
+}
 
 @code {
+    private FluentDialog? _dialog;
+    private bool _dialogShown;
+
     [Parameter]
     public bool Visible { get; set; }
 
     [Parameter]
     public EventCallback OnDismiss { get; set; }
 
-    private Task DismissAsync() => OnDismiss.InvokeAsync();
+    protected override void OnParametersSet()
+    {
+        if (!Visible)
+        {
+            _dialogShown = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Visible && !_dialogShown && _dialog is not null)
+        {
+            _dialogShown = true;
+            await _dialog.ShowAsync();
+        }
+    }
+
+    private async Task DismissAsync()
+    {
+        _dialogShown = false;
+        await OnDismiss.InvokeAsync();
+    }
+
+    private Task DialogStateChangedAsync(DialogEventArgs args) =>
+        args.State is DialogState.Closing ? DismissAsync() : Task.CompletedTask;
 }

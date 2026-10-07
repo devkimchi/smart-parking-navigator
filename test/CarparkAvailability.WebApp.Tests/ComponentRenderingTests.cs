@@ -125,7 +125,7 @@ public sealed class ComponentRenderingTests : BunitContext
 
         AngleSharp.Dom.IElement refreshButton = component.Find("fluent-button");
         Assert.Contains("Refresh data", refreshButton.TextContent);
-        Assert.Equal("accent", refreshButton.GetAttribute("appearance"));
+        Assert.Equal("primary", refreshButton.GetAttribute("appearance"));
         Assert.DoesNotContain("Parking data is stale", component.Markup);
         Assert.Contains("Latest aggregate update: 12 Aug, 9:00 AM SGT", component.Markup);
         refreshButton.Click();
@@ -140,7 +140,7 @@ public sealed class ComponentRenderingTests : BunitContext
 
         AngleSharp.Dom.IElement refreshButton = component.Find("fluent-button");
         Assert.Contains("Refresh data", refreshButton.TextContent);
-        Assert.Equal("accent", refreshButton.GetAttribute("appearance"));
+        Assert.Equal("primary", refreshButton.GetAttribute("appearance"));
         Assert.True(refreshButton.HasAttribute("disabled"));
         Assert.DoesNotContain("Live parking data is fresh", component.Markup);
     }
@@ -166,7 +166,7 @@ public sealed class ComponentRenderingTests : BunitContext
         AngleSharp.Dom.IElement mapButton = component
             .FindAll("fluent-button")
             .Single(button => button.TextContent.Trim() == "Map");
-        Assert.Equal("accent", mapButton.GetAttribute("appearance"));
+        Assert.Equal("primary", mapButton.GetAttribute("appearance"));
     }
 
     [Fact]
@@ -357,6 +357,7 @@ public sealed class ComponentRenderingTests : BunitContext
             .FindAll("fluent-button")
             .Single(button => button.TextContent.Contains("Use current location", StringComparison.Ordinal));
         locationButton.Click();
+        component.WaitForAssertion(() => Assert.Contains("You’re outside Singapore", component.Markup));
 
         component.WaitForAssertion(() =>
         {
@@ -373,8 +374,7 @@ public sealed class ComponentRenderingTests : BunitContext
 
         component.WaitForAssertion(() =>
         {
-            AngleSharp.Dom.IElement dialog = component.Find("fluent-dialog[aria-label='Current location outside Singapore']");
-            Assert.True(dialog.HasAttribute("hidden"));
+            Assert.Empty(component.FindAll("fluent-dialog[aria-label='Current location outside Singapore']"));
         });
     }
 }
