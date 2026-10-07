@@ -5,7 +5,7 @@
             <span aria-hidden="true">!</span>
             <span><strong>Data status unavailable.</strong> Results still show their source update times.</span>
         </div>
-        <FluentButton Appearance="Appearance.Accent"
+        <FluentButton Appearance="ButtonAppearance.Primary"
                       Disabled="@IsRefreshing"
                       @onclick="OnRefresh">
             @(IsRefreshing ? "Refreshing…" : "Refresh data")
@@ -32,7 +32,7 @@ else if (Status is not null)
                 }
             </span>
         </div>
-        <FluentButton Appearance="Appearance.Accent"
+        <FluentButton Appearance="ButtonAppearance.Primary"
                       Disabled="@(IsRefreshing || Status.Freshness is Freshness.Fresh)"
                       @onclick="OnRefresh">
             @(IsRefreshing ? "Refreshing…" : "Refresh data")

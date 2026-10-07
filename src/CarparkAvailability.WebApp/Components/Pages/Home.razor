@@ -16,7 +16,7 @@
 
         <form class="search-panel" @onsubmit="SearchDestinationAsync" @onsubmit:preventDefault>
             <div class="destination-control">
-                <FluentTextField @bind-Value="SearchState.SearchText"
+                <FluentTextInput @bind-Value="SearchState.SearchText"
                                  Label="Destination or address"
                                  Placeholder="e.g. Bugis Junction"
                                  Autofocus="true"
@@ -43,13 +43,13 @@
                 <span id="destination-help" class="field-help">We use this only to find nearby parking.</span>
             </div>
             <FluentButton Type="ButtonType.Submit"
-                          Appearance="Appearance.Accent"
+                          Appearance="ButtonAppearance.Primary"
                           Disabled="@SearchState.IsLoading">
                 Search parking
             </FluentButton>
             <span class="or-label" aria-hidden="true">or</span>
             <FluentButton Type="ButtonType.Button"
-                          Appearance="Appearance.Outline"
+                          Appearance="ButtonAppearance.Outline"
                           Disabled="@(SearchState.IsLoading || SearchState.LocationState == LocationPermissionState.Requesting || SearchState.LocationState == LocationPermissionState.Denied)"
                           @onclick="UseCurrentLocationAsync">
                 Use current location
@@ -114,7 +114,7 @@
             {
                 <span class="filter-chip">@CarParkTypeLabel(carParkType)</span>
             }
-            <FluentButton Appearance="Appearance.Stealth" @onclick="ClearFiltersAsync">Clear filters</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Subtle" @onclick="ClearFiltersAsync">Clear filters</FluentButton>
         </section>
     }
 
@@ -125,12 +125,12 @@
                        OnRefresh="@RefreshDataAsync" />
 
     <div class="mobile-view-toggle" aria-label="Choose results view">
-        <FluentButton Appearance="@(_mobileView == "list" ? Appearance.Accent : Appearance.Outline)"
+        <FluentButton Appearance="@(_mobileView == "list" ? ButtonAppearance.Primary : ButtonAppearance.Outline)"
                       aria-pressed="@(_mobileView == "list")"
                       @onclick="@(() => _mobileView = "list")">
             List
         </FluentButton>
-        <FluentButton Appearance="@(_mobileView == "map" ? Appearance.Accent : Appearance.Outline)"
+        <FluentButton Appearance="@(_mobileView == "map" ? ButtonAppearance.Primary : ButtonAppearance.Outline)"
                       aria-pressed="@(_mobileView == "map")"
                       @onclick="@(() => _mobileView = "map")">
             Map
@@ -154,7 +154,7 @@
                 @if (SearchState.IsLoading)
                 {
                     <div class="state-card loading-state">
-                        <FluentProgressRing aria-label="Searching" />
+                        <FluentSpinner aria-label="Searching" />
                         <div>
                             <strong>Finding suitable parking…</strong>
                             <p>Checking compatibility and the latest availability.</p>
@@ -199,7 +199,7 @@
             @if (SearchState.PendingViewport is not null)
             {
                 <FluentButton class="search-area-button"
-                              Appearance="Appearance.Accent"
+                              Appearance="ButtonAppearance.Primary"
                               @onclick="SearchVisibleAreaAsync">
                     Search this map area
                 </FluentButton>
